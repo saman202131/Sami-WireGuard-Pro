@@ -1,8 +1,0 @@
-node_modules/
-.env
-data/db.json
-data/uploads/*
-data/backups/*
-!data/uploads/.gitkeep
-!data/backups/.gitkeep
-npm-debug.log*
