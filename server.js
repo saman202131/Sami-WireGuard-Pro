@@ -9,6 +9,7 @@ const upload=multer({dest:UPLOAD,limits:{fileSize:10*1024*1024}});app.use(expres
 function auth(req,res,next){try{const h=req.headers.authorization||'';if(!h.startsWith('Bearer '))throw 0;req.user=jwt.verify(h.slice(7),process.env.JWT_SECRET||'dev-secret-change');next()}catch(e){res.status(401).json({error:'Unauthorized'})}}
 function admin(req,res,next){auth(req,res,()=>req.user.role==='admin'?next():res.status(403).json({error:'Forbidden'}))}
 function saveAudit(action,meta={}){const d=read();d.audit.unshift({id:id(),action,meta,at:new Date().toISOString()});d.audit=d.audit.slice(0,500);write(d)}
+app.get('/',(req,res)=>res.sendFile(path.join(ROOT,'public','index.html')));
 app.get('/api/health',(q,r)=>r.json({ok:true,site:'Sami WireGuard'}));
 app.post('/api/login',(req,res)=>{const {username,password}=req.body;if(username===(process.env.ADMIN_USER||'admin')&&password===(process.env.ADMIN_PASSWORD||'ChangeThisNow123!')){const token=jwt.sign({role:'admin',username},process.env.JWT_SECRET||'dev-secret-change',{expiresIn:'7d'});saveAudit('admin_login',{username});return res.json({token,role:'admin'})}res.status(401).json({error:'نام کاربری یا رمز عبور اشتباه است'})});
 app.get('/api/store',(req,res)=>{const d=read();res.json({settings:d.settings,products:d.products.filter(x=>x.active)});});
