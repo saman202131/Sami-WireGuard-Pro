@@ -19,35 +19,45 @@ app.post("/api/login",(req,res)=>{const u=req.body.username||"",p=req.body.passw
 app.get("/api/store",(req,res)=>{
   const d=read();
 
-  const products=[
-    ...(Array.isArray(d.products)?d.products:[]),
-    ...(Array.isArray(d.services)?d.services.map(s=>({
-      id:s.id,
-      name:s.name||s.title||"WireGuard Service",
-      category:s.category||"wg",
-      price:Number(s.price||s.amount||0),
-      duration:s.duration||s.days||"",
-      volume:s.volume||s.gb||"",
-      stock:Number(s.stock??s.inventory??1),
-      active:s.active!==false,
-      featured:!!s.featured
-    })):[])
-  ];
+  const products=(d.products||[])
+    .filter(p=>p.active!==false)
+    .map(p=>({
+      id:p.id,
+      name:p.name||"محصول بدون نام",
+      category:p.category||"wg",
+      price:Number(p.price||0),
+      duration:p.duration||"",
+      volume:p.volume||"",
+      stock:Number(p.stock??0),
+      active:true,
+      featured:!!p.featured
+    }));
+
+  const categories=(d.settings?.categories||[])
+    .filter(c=>c.active!==false)
+    .map(c=>({
+      id:c.id,
+      name:c.name,
+      active:true
+    }));
 
   res.json({
     settings:{
-      ...d.settings,
-      botToken:undefined
+      siteName:d.settings?.siteName||"Sami WireGuard",
+      supportUsername:d.settings?.supportUsername||"saman_s87",
+      botUsername:d.settings?.botUsername||"sami91928bot",
+      channelUsername:d.settings?.channelUsername||"SamiWireGuard",
+      cardNumber:d.settings?.cardNumber||"",
+      cardName:d.settings?.cardName||"",
+      flashSale:d.settings?.flashSale||{
+        active:false,
+        title:"",
+        percent:0,
+        endsAt:""
+      }
     },
-
-    categories:(d.settings.categories||[]).filter(x=>x.active),
-
+    categories:categories,
     products:products
-      .filter(x=>x.active!==false)
-      .map(x=>({
-        ...x,
-        stock:Number(x.stock??0)
-      }))
   });
 });
 app.get("/api/dashboard",admin,(req,res)=>{const d=read(),orders=d.orders;res.json({orders:orders.length,pending:orders.filter(x=>x.status==="pending").length,approved:orders.filter(x=>x.status==="approved").length,revenue:orders.filter(x=>x.status==="approved").reduce((s,x)=>s+Number(x.amount||0),0),products:d.products.length,customers:d.customers.length,tickets:d.tickets.filter(x=>x.status!=="closed").length,services:d.services.length})});
