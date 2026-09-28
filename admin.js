@@ -8,6 +8,105 @@ function logout(){localStorage.removeItem('sami_admin_token');localStorage.remov
 function boot(){if(!token)return;$('#login').classList.add('hidden');$('#app').classList.remove('hidden');$('#who').textContent='👤 '+(me?.username||'admin')+' · '+(me?.role||'owner');$('#nav').innerHTML=menu.map(x=>`<button data-nav="${x[0]}" onclick="show('${x[0]}')">${x[1]}</button>`).join('');show('dashboard')}
 function setView(html){$('#view').innerHTML=html}
 function buttons(html){return `<div class="actions">${html}</div>`}
+async function wallet(){
+  let r=await api('/api/feature-data?type=wallet');
+  genericTable('💳 کیف پول',r.items||r,[
+    ['name','نام'],
+    ['contact','تماس'],
+    ['amount','موجودی'],
+    ['balance','موجودی'],
+    ['createdAt','تاریخ']
+  ]);
+}
+
+async function vip(){
+  let r=await api('/api/feature-data?type=vip');
+  genericTable('👑 VIP',r.items||r,[
+    ['name','نام'],
+    ['contact','تماس'],
+    ['level','سطح'],
+    ['vip','VIP'],
+    ['createdAt','تاریخ']
+  ]);
+}
+
+async function loyalty(){
+  let r=await api('/api/feature-data?type=loyalty');
+  genericTable('💎 وفاداری',r.items||r,[
+    ['name','نام'],
+    ['contact','تماس'],
+    ['points','امتیاز'],
+    ['createdAt','تاریخ']
+  ]);
+}
+
+async function missions(){
+  let r=await api('/api/feature-data?type=missions');
+  genericTable('🎯 ماموریت‌ها',r.items||r,[
+    ['title','عنوان'],
+    ['name','نام'],
+    ['status','وضعیت'],
+    ['reward','جایزه'],
+    ['createdAt','تاریخ']
+  ]);
+}
+
+async function referral(){
+  let r=await api('/api/feature-data?type=referral');
+  genericTable('🎁 معرفی دوستان',r.items||r,[
+    ['name','نام'],
+    ['contact','تماس'],
+    ['referrer','معرف'],
+    ['reward','پاداش'],
+    ['createdAt','تاریخ']
+  ]);
+}
+
+async function notifications(){
+  let r=await api('/api/notifications');
+  genericTable('🔔 اعلان‌ها',r.items||r,[
+    ['title','عنوان'],
+    ['message','پیام'],
+    ['read','خوانده شده'],
+    ['createdAt','تاریخ']
+  ]);
+}
+
+async function analytics(){
+  let r=await api('/api/analytics');
+  genericTable('📈 آمار',Array.isArray(r)?r:[r],[
+    ['date','تاریخ'],
+    ['orders','سفارش'],
+    ['sales','فروش'],
+    ['revenue','درآمد'],
+    ['customers','مشتری']
+  ]);
+}
+
+async function audit(){
+  let r=await api('/api/audit');
+  genericTable('🛡️ لاگ‌ها',r.items||r,[
+    ['action','عملیات'],
+    ['user','کاربر'],
+    ['message','پیام'],
+    ['createdAt','تاریخ']
+  ]);
+}
+
+async function backup(){
+  setView(`
+    <div class="content">
+      <h3>💾 پشتیبان‌گیری</h3>
+      <p class="muted">از اطلاعات فعلی فروشگاه نسخه پشتیبان تهیه کن.</p>
+      <button class="primary" onclick="makeBackup()">💾 ساخت بکاپ</button>
+    </div>
+  `);
+}
+
+async function makeBackup(){
+  let r=await api('/api/backup');
+  toast(r.message||'بکاپ آماده شد');
+}
 async function show(type){document.querySelectorAll('[data-nav]').forEach(x=>x.classList.toggle('active',x.dataset.nav===type));$('#title').textContent=menu.find(x=>x[0]===type)?.[1]||type;Promise.resolve().then(()=>({dashboard:dash,categories,products,orders,customers,services,tickets,coupons,flash,wheel,telegram,settings,servers,wallet,vip,loyalty,missions,referral,notifications,analytics,audit,backup}[type]||feature)(type)).catch(e=>setView(`<div class="content"><b>خطا:</b> ${esc(e.message)}</div>`))}
 async function dash(){let d=await api('/api/dashboard');setView(`<div class="cards">${[['orders','سفارش'],['pending','در انتظار'],['approved','تأییدشده'],['revenue','فروش (تومان)'],['products','محصول'],['customers','مشتری'],['tickets','تیکت باز'],['services','سرویس']].map(([k,n])=>`<div class="stat">${n}<b>${Number(d[k]||0).toLocaleString('fa-IR')}</b></div>`).join('')}</div><div class="content"><div class="section-title"><h3>مرکز کنترل</h3><span class="pill">● ONLINE</span></div><p class="muted">از منوی سمت راست هر بخش را باز کن. همه فرم‌های این نسخه مستقیماً به API متصل‌اند و بعد از ذخیره، اطلاعات دوباره از سرور خوانده می‌شود.</p></div>`)}
 async function categories(){let r=await api('/api/categories');setView(`<div class="content"><div class="section-title"><h3>فعال/غیرفعال کردن دسته‌ها</h3><span class="muted">WireGuard / DNS / V2Ray</span></div>${r.map(x=>`<div class="field" style="margin:9px 0"><b>${esc(x.name)}</b><span class="pill" style="margin:0 10px">${x.active?'فعال':'خاموش'}</span><button class="${x.active?'danger':'primary'}" onclick="toggleCat('${x.id}',${!x.active})">${x.active?'خاموش کن':'فعال کن'}</button></div>`).join('')}</div>`)}
