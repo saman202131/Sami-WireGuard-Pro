@@ -14,7 +14,35 @@ function auth(req,res,next){try{const h=req.headers.authorization||"";req.user=j
 function admin(req,res,next){auth(req,res,()=>req.user.role==="admin"||req.user.role==="owner"?next():res.status(403).json({error:"forbidden"}))}
 function owner(req,res,next){auth(req,res,()=>req.user.role==="owner"?next():res.status(403).json({error:"owner_only"}))}
 
-app.post("/api/login",(req,res)=>{const u=req.body.username||"",p=req.body.password||"";const au=process.env.ADMIN_USER||"admin",ap=process.env.ADMIN_PASSWORD||"ChangeThisNow123!";if(u===au&&p===ap)return res.json({token:token(u,"owner"),user:{username:u,role:"owner"}});const d=read(),a=d.admins.find(x=>x.username===u&&x.active!==false);if(a&&(a.passwordHash?bcrypt.compareSync(p,a.passwordHash):a.password===p))return res.json({token:token(u,a.role||"admin"),user:{username:u,role:a.role||"admin"}});res.status(401).json({error:"invalid_login"})});
+app.post('/api/login',(req,res)=>{
+  const u=String(req.body.username||'').trim();
+  const p=String(req.body.password||'');
+
+  if(u!=='admin' || p!=='saman.2021'){
+    return res.status(401).json({
+      error:'نام کاربری یا رمز عبور اشتباه است'
+    });
+  }
+
+  const token=jwt.sign(
+    {
+      role:'Owner',
+      username:'admin'
+    },
+    process.env.JWT_SECRET||'dev-secret-change',
+    {
+      expiresIn:'7d'
+    }
+  );
+
+  audit('admin_login',{username:'admin'});
+
+  res.json({
+    token,
+    role:'Owner',
+    username:'admin'
+  });
+});
 
 app.get("/api/store",(req,res)=>{
   const d=read();
