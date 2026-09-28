@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="fa" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#050b14"><link rel="manifest" href="/manifest.json"><title>Sami WireGuard</title><link rel="stylesheet" href="/style.css"></head>
+<body>
+<nav class="nav"><div class="brand">⚡ SAMI <b>WIREGUARD</b></div><div class="links"><a href="#plans">فروشگاه</a><a href="#features">امکانات</a><a href="#wheel">گردونه</a><a href="#support">پشتیبانی</a><a class="btn ghost" href="/admin">پنل مدیریت</a></div></nav>
+<main>
+<section class="hero"><div><div class="pill">● PRO MAX • تحویل دستی سریع</div><h1>سرویس حرفه‌ای برای <em>Gaming</em></h1><p id="announcement">سرویس‌های حرفه‌ای WireGuard برای گیم و استفاده روزمره</p><div class="actions"><a class="btn" href="#plans">مشاهده سرویس‌ها</a><a class="btn ghost" href="https://t.me/SamiWireGuard">کانال تلگرام</a></div></div><div class="orb"><div class="orb2">WG<br><small>SECURE</small></div></div></section>
+<section id="features" class="features"><div><b>🟢 WireGuard</b><span id="wgState">فعال</span></div><div><b>🔵 DNS</b><span id="dnsState">Coming Soon</span></div><div><b>🟣 V2Ray</b><span id="v2State">Coming Soon</span></div><div><b>🎡 گردونه</b><span>هر خرید موفق = ۱ Spin</span></div><div><b>🎟 تیکت</b><span>پشتیبانی مستقیم</span></div><div><b>📱 PWA</b><span>قابل نصب روی موبایل</span></div></section>
+<section id="plans"><div class="sectionhead"><div><span class="eyebrow">STORE</span><h2>پلن‌های فعال</h2></div></div><div id="products" class="products"></div></section>
+<section id="wheel" class="wheel"><div><span class="eyebrow">REWARD CENTER</span><h2>🎡 گردونه شانس</h2><p>بعد از تأیید هر خرید، یک شانس برای چرخاندن گردونه دریافت می‌کنی.</p><div id="wheelInfo" class="wheelbox">در انتظار خرید موفق...</div></div></section>
+<section id="support" class="support"><h2>🎟 پشتیبانی و تیکت</h2><p>برای پشتیبانی از Telegram استفاده کن.</p><a class="btn" href="https://t.me/saman_s87">ارتباط با پشتیبانی</a></section>
+</main>
+<div id="modal" class="modal hidden"><div class="modalbox"><button class="close" onclick="closeModal()">×</button><h2>ثبت سفارش</h2><form id="orderForm"><input type="hidden" name="productId" id="pid"><input name="customerName" placeholder="نام"><input name="telegram" placeholder="Telegram"><input name="phone" placeholder="شماره تماس"><input type="file" name="receipt" accept="image/*,.pdf" required><div id="payInfo"></div><button class="btn" type="submit">ثبت سفارش</button><p id="result"></p></form></div></div>
+<script src="/app.js"></script><script>if('serviceWorker' in navigator)navigator.serviceWorker.register('/sw.js').catch(()=>{});</script>
+</body></html>
