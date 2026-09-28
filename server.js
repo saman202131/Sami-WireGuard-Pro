@@ -16,7 +16,40 @@ function owner(req,res,next){auth(req,res,()=>req.user.role==="owner"?next():res
 
 app.post("/api/login",(req,res)=>{const u=req.body.username||"",p=req.body.password||"";const au=process.env.ADMIN_USER||"admin",ap=process.env.ADMIN_PASSWORD||"ChangeThisNow123!";if(u===au&&p===ap)return res.json({token:token(u,"owner"),user:{username:u,role:"owner"}});const d=read(),a=d.admins.find(x=>x.username===u&&x.active!==false);if(a&&(a.passwordHash?bcrypt.compareSync(p,a.passwordHash):a.password===p))return res.json({token:token(u,a.role||"admin"),user:{username:u,role:a.role||"admin"}});res.status(401).json({error:"invalid_login"})});
 
-app.get("/api/store",(req,res)=>{const d=read();res.json({settings:{...d.settings,botToken:undefined},categories:d.settings.categories.filter(x=>x.active),products:d.products.filter(x=>x.active!==false).map(x=>({...x,stock:x.stock??0}))})});
+app.get("/api/store",(req,res)=>{
+  const d=read();
+
+  const products=[
+    ...(Array.isArray(d.products)?d.products:[]),
+    ...(Array.isArray(d.services)?d.services.map(s=>({
+      id:s.id,
+      name:s.name||s.title||"WireGuard Service",
+      category:s.category||"wg",
+      price:Number(s.price||s.amount||0),
+      duration:s.duration||s.days||"",
+      volume:s.volume||s.gb||"",
+      stock:Number(s.stock??s.inventory??1),
+      active:s.active!==false,
+      featured:!!s.featured
+    })):[])
+  ];
+
+  res.json({
+    settings:{
+      ...d.settings,
+      botToken:undefined
+    },
+
+    categories:(d.settings.categories||[]).filter(x=>x.active),
+
+    products:products
+      .filter(x=>x.active!==false)
+      .map(x=>({
+        ...x,
+        stock:Number(x.stock??0)
+      }))
+  });
+});
 app.get("/api/dashboard",admin,(req,res)=>{const d=read(),orders=d.orders;res.json({orders:orders.length,pending:orders.filter(x=>x.status==="pending").length,approved:orders.filter(x=>x.status==="approved").length,revenue:orders.filter(x=>x.status==="approved").reduce((s,x)=>s+Number(x.amount||0),0),products:d.products.length,customers:d.customers.length,tickets:d.tickets.filter(x=>x.status!=="closed").length,services:d.services.length})});
 
 app.get("/api/products",admin,(req,res)=>res.json(read().products));
