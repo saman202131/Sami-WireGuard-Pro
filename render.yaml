@@ -1,0 +1,29 @@
+services:
+  - type: web
+    name: sami-wireguard-pro-max
+    runtime: node
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: ADMIN_USER
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: TELEGRAM_BOT_USERNAME
+        value: sami91928bot
+      - key: TELEGRAM_SUPPORT_USERNAME
+        value: saman_s87
+      - key: TELEGRAM_CHANNEL_USERNAME
+        value: SamiWireGuard
+      - key: CARD_NUMBER
+        sync: false
+      - key: CARD_NAME
+        value: Sami WireGuard
+      - key: CURRENCY
+        value: تومان
