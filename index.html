@@ -1,188 +1,263 @@
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-  <title>SAMI // WIREGUARD</title>
-
+  <title>Sami WireGuard | خرید VPN وایرگارد</title>
   <meta
     name="description"
-    content="SAMI WireGuard - Cyberpunk Gaming Network"
-  >
+    content="خرید سرویس WireGuard با تحویل سریع کانفیگ، QR Code و پشتیبانی."
+  />
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-
   <link
     href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;600;700;800;900&display=swap"
     rel="stylesheet"
-  >
+  />
 
-  <link rel="stylesheet" href="/style.css">
+  <link rel="stylesheet" href="/style.css" />
 </head>
 
 <body>
 
-  <!-- BACKGROUND -->
-  <div class="bg-grid"></div>
-  <div class="bg-glow bg-glow-1"></div>
-  <div class="bg-glow bg-glow-2"></div>
-  <div class="scanlines"></div>
+  <!-- ================= HEADER ================= -->
 
-  <!-- TOP HUD -->
   <header class="site-header">
+    <div class="container header-inner">
 
-    <div class="header-inner">
+      <a href="#home" class="brand">
+        <span class="brand-mark">S</span>
 
-      <a href="/" class="brand">
-        <span class="brand-icon">⚡</span>
-
-        <span>
-          <strong>SAMI</strong>
-          <small>// WIREGUARD</small>
+        <span class="brand-text">
+          <strong id="brandName">SAMI</strong>
+          <small>WIREGUARD</small>
         </span>
       </a>
 
       <nav class="main-nav">
         <a href="#home">خانه</a>
-        <a href="#store">فروشگاه</a>
-        <a href="#services">سرویس‌ها</a>
-        <a href="#support">پشتیبانی</a>
+        <a href="#features">مزایا</a>
+        <a href="#plans">پلن‌ها</a>
+        <a href="#how-it-works">نحوه استفاده</a>
+        <a href="#faq">سؤالات متداول</a>
       </nav>
 
-      <div class="header-status">
-        <span class="status-dot"></span>
-        <span>SYSTEM ONLINE</span>
+      <div class="header-actions">
+        <a
+          href="https://t.me/saman_s87"
+          target="_blank"
+          rel="noopener"
+          class="header-support"
+        >
+          پشتیبانی
+        </a>
+
+        <button
+          type="button"
+          class="header-login"
+          onclick="openAuth()"
+        >
+          ورود / ثبت‌نام
+        </button>
       </div>
 
       <button
-        class="player-button"
-        onclick="openAuth()"
+        type="button"
+        class="mobile-menu-button"
+        id="mobileMenuButton"
+        aria-label="منو"
       >
-        🎮 PLAYER
+        ☰
       </button>
 
     </div>
-
   </header>
 
 
-  <!-- HERO -->
   <main>
 
-    <section
-      id="home"
-      class="hero section"
-    >
+    <!-- ================= HERO ================= -->
 
-      <div class="hero-content">
+    <section class="hero-section" id="home">
 
-        <div class="hero-badge">
-          <span class="status-dot"></span>
-          SECURE NETWORK // ONLINE
+      <div class="hero-background">
+        <div class="hero-glow hero-glow-one"></div>
+        <div class="hero-glow hero-glow-two"></div>
+        <div class="hero-grid"></div>
+      </div>
+
+      <div class="container hero-grid-layout">
+
+        <div class="hero-content">
+
+          <div class="hero-badge">
+            <span class="online-dot"></span>
+            سرویس WireGuard فعال است
+          </div>
+
+          <h1>
+            اینترنت سریع‌تر،
+            <span>پایدارتر</span>
+            و مطمئن‌تر
+          </h1>
+
+          <p class="hero-description">
+            سرویس WireGuard خودت را انتخاب کن، پرداخت کن و
+            کانفیگ را همراه با QR Code از پنل کاربری دریافت کن.
+          </p>
+
+          <div class="hero-buttons">
+
+            <a href="#plans" class="primary-button">
+              مشاهده پلن‌ها
+              <span>←</span>
+            </a>
+
+            <a href="#how-it-works" class="secondary-button">
+              نحوه استفاده
+            </a>
+
+          </div>
+
+          <div class="hero-trust">
+
+            <div>
+              <strong>⚡</strong>
+              <span>اتصال سریع</span>
+            </div>
+
+            <div>
+              <strong>🛡</strong>
+              <span>پروتکل WireGuard</span>
+            </div>
+
+            <div>
+              <strong>🎫</strong>
+              <span>پشتیبانی</span>
+            </div>
+
+          </div>
+
         </div>
 
-        <h1>
-          ENTER THE
-          <span>CYBER NETWORK</span>
-        </h1>
 
-        <p class="hero-text">
-          اتصال سریع، پایدار و امن با
-          <strong>SAMI // WIREGUARD</strong>
-        </p>
+        <div class="hero-card">
 
-        <div class="hero-stats">
+          <div class="connection-card">
 
-          <div class="hud-stat">
-            <span>NETWORK</span>
-            <strong>ONLINE</strong>
+            <div class="connection-top">
+              <span>وضعیت سرویس</span>
+
+              <span class="status-online">
+                <i></i>
+                آنلاین
+              </span>
+            </div>
+
+            <div class="connection-icon">
+              <span>WG</span>
+            </div>
+
+            <h3>WireGuard VPN</h3>
+
+            <p>
+              اتصال سریع و پایدار برای استفاده روزمره
+            </p>
+
+            <div class="connection-stats">
+
+              <div>
+                <span>پروتکل</span>
+                <strong>WireGuard</strong>
+              </div>
+
+              <div>
+                <span>رمزنگاری</span>
+                <strong>ChaCha20</strong>
+              </div>
+
+            </div>
+
+            <div class="connection-line">
+              <span></span>
+            </div>
+
+            <div class="connection-footer">
+              <span>CONFIG READY</span>
+              <b>.conf + QR</b>
+            </div>
+
           </div>
-
-          <div class="hud-stat">
-            <span>LATENCY</span>
-            <strong>LOW PING</strong>
-          </div>
-
-          <div class="hud-stat">
-            <span>SECURITY</span>
-            <strong>ACTIVE</strong>
-          </div>
-
-        </div>
-
-        <div class="hero-actions">
-
-          <a
-            href="#store"
-            class="cyber-button primary"
-          >
-            <span>EXPLORE SERVICES</span>
-            <b>→</b>
-          </a>
-
-          <a
-            href="#services"
-            class="cyber-button secondary"
-          >
-            VIEW NETWORK
-          </a>
 
         </div>
 
       </div>
 
+    </section>
 
-      <!-- CYBER CHARACTER PANEL -->
-      <div class="hero-character">
 
-        <div class="character-frame">
+    <!-- ================= BENEFITS ================= -->
 
-          <div class="frame-top">
-            <span>PLAYER SYSTEM</span>
-            <span>01</span>
-          </div>
+    <section class="section benefits-section" id="features">
 
-          <div class="character-placeholder">
+      <div class="container">
 
-            <div class="character-ring"></div>
+        <div class="section-heading">
 
-            <div class="character-core">
-              <span>⚡</span>
-              <small>SAMI</small>
-            </div>
+          <span class="section-label">
+            چرا Sami WireGuard؟
+          </span>
 
-            <div class="hud-line line-1"></div>
-            <div class="hud-line line-2"></div>
-            <div class="hud-line line-3"></div>
+          <h2>
+            همه‌چیز برای یک اتصال
+            <span>روان و پایدار</span>
+          </h2>
 
-            <div class="character-tag tag-1">
-              <span>●</span>
-              ONLINE
-            </div>
+          <p>
+            سرویس را انتخاب کن و بقیه مراحل را از داخل حساب کاربری مدیریت کن.
+          </p>
 
-            <div class="character-tag tag-2">
-              LOW PING
-            </div>
+        </div>
 
-            <div class="character-tag tag-3">
-              SECURE
-            </div>
 
-          </div>
+        <div class="benefits-grid">
 
-          <div class="frame-bottom">
+          <article class="benefit-card">
+            <div class="benefit-icon">⚡</div>
+            <h3>اتصال سریع</h3>
+            <p>
+              استفاده از پروتکل مدرن WireGuard برای برقراری اتصال سریع.
+            </p>
+          </article>
 
-            <span>
-              NODE: GLOBAL
-            </span>
 
-            <span>
-              STATUS: READY
-            </span>
+          <article class="benefit-card">
+            <div class="benefit-icon">🛡</div>
+            <h3>امنیت و رمزنگاری</h3>
+            <p>
+              ارتباط رمزنگاری‌شده با WireGuard و مدیریت سرویس از پنل شخصی.
+            </p>
+          </article>
 
-          </div>
+
+          <article class="benefit-card">
+            <div class="benefit-icon">📦</div>
+            <h3>تحویل کانفیگ</h3>
+            <p>
+              بعد از تأیید سفارش، کانفیگ و QR Code در اختیار شما قرار می‌گیرد.
+            </p>
+          </article>
+
+
+          <article class="benefit-card">
+            <div class="benefit-icon">🎧</div>
+            <h3>پشتیبانی</h3>
+            <p>
+              در صورت وجود مشکل می‌توانید از طریق تلگرام یا تیکت با پشتیبانی در ارتباط باشید.
+            </p>
+          </article>
 
         </div>
 
@@ -191,289 +266,405 @@
     </section>
 
 
-    <!-- SERVICE MODES -->
-    <section
-      id="services"
-      class="section modes-section"
-    >
+    <!-- ================= PLANS ================= -->
 
-      <div class="section-heading">
+    <section class="section plans-section" id="plans">
 
-        <div>
-          <span class="eyebrow">
-            SELECT YOUR MODE
-          </span>
+      <div class="container">
 
-          <h2>
-            NETWORK
-            <span>LOADOUT</span>
-          </h2>
+        <div class="section-heading plans-heading">
+
+          <div>
+            <span class="section-label">
+              فروشگاه
+            </span>
+
+            <h2>
+              پلن مناسب خودت را
+              <span>انتخاب کن</span>
+            </h2>
+          </div>
+
+          <p>
+            قیمت، حجم و مدت هر سرویس را مقایسه کن و مستقیماً سفارش بده.
+          </p>
+
         </div>
 
-        <p>
-          سرویس موردنظر خودت را انتخاب کن
-        </p>
 
-      </div>
+        <!-- Dynamic categories -->
+        <div id="categoryFilters" class="category-filters"></div>
 
 
-      <div
-        id="categories"
-        class="mode-grid"
-      >
+        <!-- Dynamic products -->
+        <div
+          id="products"
+          class="plans-grid"
+        ></div>
 
-        <button
-          class="mode-card active"
-          data-category="all"
-          onclick="filterProducts('all', this)"
-        >
-
-          <span class="mode-icon">◈</span>
-
-          <div>
-            <small>MODE 00</small>
-            <h3>ALL SERVICES</h3>
-            <p>نمایش همه سرویس‌ها</p>
-          </div>
-
-          <b>→</b>
-
-        </button>
-
-
-        <button
-          class="mode-card mode-wg"
-          data-category="wg"
-          onclick="filterProducts('wg', this)"
-        >
-
-          <span class="mode-icon">🎯</span>
-
-          <div>
-            <small>TACTICAL MODE</small>
-            <h3>WIREGUARD</h3>
-            <p>LOW PING // SECURE</p>
-          </div>
-
-          <b>→</b>
-
-        </button>
-
-
-        <button
-          class="mode-card mode-dns"
-          data-category="dns"
-          onclick="filterProducts('dns', this)"
-        >
-
-          <span class="mode-icon">⚡</span>
-
-          <div>
-            <small>SPEED MODE</small>
-            <h3>DNS</h3>
-            <p>FAST // STABLE</p>
-          </div>
-
-          <b>→</b>
-
-        </button>
-
-
-        <button
-          class="mode-card mode-v2ray"
-          data-category="v2ray"
-          onclick="filterProducts('v2ray', this)"
-        >
-
-          <span class="mode-icon">◉</span>
-
-          <div>
-            <small>STEALTH MODE</small>
-            <h3>V2RAY</h3>
-            <p>PRIVATE // SECURE</p>
-          </div>
-
-          <b>→</b>
-
-        </button>
-
-      </div>
-
-    </section>
-
-
-    <!-- STORE -->
-    <section
-      id="store"
-      class="section store-section"
-    >
-
-      <div class="section-heading">
-
-        <div>
-
-          <span class="eyebrow">
-            AVAILABLE LOADOUTS
-          </span>
-
-          <h2>
-            SELECT
-            <span>YOUR SERVICE</span>
-          </h2>
-
-        </div>
 
         <div
-          id="store-status"
-          class="store-status"
+          id="productsEmpty"
+          class="empty-products"
+          style="display:none;"
         >
-          <span class="status-dot"></span>
-          STORE ONLINE
-        </div>
-
-      </div>
-
-
-      <div
-        id="products"
-        class="product-grid"
-      >
-
-        <div class="loading-card">
-          <div class="loader"></div>
-          <span>LOADING NETWORK...</span>
-        </div>
-
-      </div>
-
-    </section>
-
-
-    <!-- PLAYER CTA -->
-    <section class="player-cta section">
-
-      <div class="cta-box">
-
-        <div>
-
-          <span class="eyebrow">
-            PLAYER ACCOUNT
-          </span>
-
-          <h2>
-            READY TO
-            <span>CONNECT?</span>
-          </h2>
-
+          <div>📦</div>
+          <h3>در حال حاضر پلنی موجود نیست</h3>
           <p>
-            برای خرید و مدیریت سرویس‌ها
-            حساب کاربری خودت را بساز.
+            لطفاً بعداً دوباره بررسی کنید.
           </p>
-
         </div>
-
-        <button
-          class="cyber-button primary"
-          onclick="openAuth()"
-        >
-          CREATE PLAYER
-          <b>→</b>
-        </button>
 
       </div>
 
     </section>
 
 
-    <!-- SUPPORT -->
+    <!-- ================= HOW IT WORKS ================= -->
+
     <section
-      id="support"
-      class="section support-section"
+      class="section how-section"
+      id="how-it-works"
     >
 
-      <div class="support-grid">
+      <div class="container">
 
-        <div>
+        <div class="section-heading center-heading">
 
-          <span class="eyebrow">
-            COMMUNICATION
+          <span class="section-label">
+            نحوه خرید
           </span>
 
           <h2>
-            NEED
-            <span>SUPPORT?</span>
+            فقط در
+            <span>سه مرحله</span>
           </h2>
 
           <p>
-            تیم پشتیبانی آماده پاسخگویی
-            به شماست.
+            بدون مراحل پیچیده، سرویس خودت را دریافت کن.
           </p>
 
         </div>
 
 
-        <div class="support-actions">
+        <div class="steps-grid">
 
-          <a
-            id="supportLink"
-            href="#"
-            target="_blank"
-            class="support-card"
-          >
+          <article class="step-card">
 
-            <span>💬</span>
-
-            <div>
-              <small>TELEGRAM SUPPORT</small>
-              <strong id="supportUsername">
-                @saman_s87
-              </strong>
+            <div class="step-number">
+              ۱
             </div>
 
-            <b>↗</b>
+            <div class="step-icon">
+              👤
+            </div>
 
-          </a>
+            <h3>
+              ساخت حساب
+            </h3>
 
+            <p>
+              شماره موبایل خود را وارد کنید و حساب کاربری بسازید.
+            </p>
+
+          </article>
+
+
+          <article class="step-card">
+
+            <div class="step-number">
+              ۲
+            </div>
+
+            <div class="step-icon">
+              🛒
+            </div>
+
+            <h3>
+              انتخاب و پرداخت
+            </h3>
+
+            <p>
+              پلن موردنظر را انتخاب کرده و پرداخت را انجام دهید.
+            </p>
+
+          </article>
+
+
+          <article class="step-card">
+
+            <div class="step-number">
+              ۳
+            </div>
+
+            <div class="step-icon">
+              📲
+            </div>
+
+            <h3>
+              دریافت سرویس
+            </h3>
+
+            <p>
+              پس از تأیید سفارش، کانفیگ و QR Code را دریافت کنید.
+            </p>
+
+          </article>
+
+        </div>
+
+      </div>
+
+    </section>
+
+
+    <!-- ================= DEVICES ================= -->
+
+    <section class="section devices-section">
+
+      <div class="container devices-layout">
+
+        <div class="devices-content">
+
+          <span class="section-label">
+            سازگار با دستگاه‌های مختلف
+          </span>
+
+          <h2>
+            روی دستگاه
+            <span>خودت</span>
+            استفاده کن
+          </h2>
+
+          <p>
+            WireGuard برای سیستم‌عامل‌های مختلف در دسترس است.
+            می‌توانی فایل کانفیگ را وارد کنی یا QR Code را اسکن کنی.
+          </p>
 
           <a
-            id="botLink"
-            href="#"
+            href="https://www.wireguard.com/install/"
             target="_blank"
-            class="support-card"
+            rel="noopener"
+            class="secondary-button"
           >
+            راهنمای نصب WireGuard
+          </a>
 
+        </div>
+
+
+        <div class="devices-grid">
+
+          <div class="device-card">
             <span>🤖</span>
+            <strong>Android</strong>
+          </div>
 
-            <div>
-              <small>TELEGRAM BOT</small>
-              <strong id="botUsername">
-                @sami91928bot
-              </strong>
-            </div>
+          <div class="device-card">
+            <span></span>
+            <strong>iOS</strong>
+          </div>
 
-            <b>↗</b>
+          <div class="device-card">
+            <span>▣</span>
+            <strong>Windows</strong>
+          </div>
 
-          </a>
+          <div class="device-card">
+            <span>◉</span>
+            <strong>macOS</strong>
+          </div>
 
+          <div class="device-card">
+            <span>⌘</span>
+            <strong>Linux</strong>
+          </div>
+
+        </div>
+
+      </div>
+
+    </section>
+
+
+    <!-- ================= ACCOUNT ================= -->
+
+    <section class="section account-section">
+
+      <div class="container">
+
+        <div class="account-banner">
+
+          <div>
+
+            <span class="section-label">
+              پنل کاربری
+            </span>
+
+            <h2>
+              سرویس‌هایت را
+              <span>یکجا مدیریت کن</span>
+            </h2>
+
+            <p>
+              سفارش‌ها، سرویس‌های فعال، کانفیگ‌ها و پشتیبانی
+              از داخل حساب کاربری قابل مدیریت خواهند بود.
+            </p>
+
+          </div>
+
+          <button
+            type="button"
+            class="primary-button"
+            onclick="openAuth()"
+          >
+            ورود به پنل
+            <span>←</span>
+          </button>
+
+        </div>
+
+      </div>
+
+    </section>
+
+
+    <!-- ================= FAQ ================= -->
+
+    <section
+      class="section faq-section"
+      id="faq"
+    >
+
+      <div class="container faq-layout">
+
+        <div class="faq-intro">
+
+          <span class="section-label">
+            FAQ
+          </span>
+
+          <h2>
+            پاسخ
+            <span>سؤالات شما</span>
+          </h2>
+
+          <p>
+            اگر پاسخ سؤال خود را پیدا نکردید، با پشتیبانی تماس بگیرید.
+          </p>
 
           <a
-            id="channelLink"
-            href="#"
+            href="https://t.me/saman_s87"
             target="_blank"
-            class="support-card"
+            rel="noopener"
+            class="secondary-button"
           >
+            ارتباط با پشتیبانی
+          </a>
 
-            <span>📡</span>
+        </div>
 
-            <div>
-              <small>TELEGRAM CHANNEL</small>
-              <strong id="channelUsername">
-                @SamiWireGuard
-              </strong>
-            </div>
 
-            <b>↗</b>
+        <div class="faq-list">
 
+          <details class="faq-item">
+            <summary>
+              چگونه سرویس خریداری کنم؟
+              <span>+</span>
+            </summary>
+
+            <p>
+              ابتدا یکی از پلن‌ها را انتخاب کنید، سپس وارد حساب کاربری شوید
+              و مراحل سفارش و پرداخت را انجام دهید.
+            </p>
+          </details>
+
+
+          <details class="faq-item">
+            <summary>
+              کانفیگ را چگونه دریافت می‌کنم؟
+              <span>+</span>
+            </summary>
+
+            <p>
+              بعد از تأیید سفارش، کانفیگ و QR Code سرویس در حساب کاربری
+              شما نمایش داده می‌شود.
+            </p>
+          </details>
+
+
+          <details class="faq-item">
+            <summary>
+              WireGuard روی چه دستگاه‌هایی کار می‌کند؟
+              <span>+</span>
+            </summary>
+
+            <p>
+              می‌توانید از کلاینت WireGuard روی Android، iOS، Windows،
+              macOS و Linux استفاده کنید.
+            </p>
+          </details>
+
+
+          <details class="faq-item">
+            <summary>
+              اگر در اتصال مشکل داشتم چه کنم؟
+              <span>+</span>
+            </summary>
+
+            <p>
+              از طریق پشتیبانی تلگرام یا تیکت داخل پنل با ما در ارتباط باشید.
+            </p>
+          </details>
+
+
+          <details class="faq-item">
+            <summary>
+              آیا می‌توانم سفارش‌های قبلی خودم را ببینم؟
+              <span>+</span>
+            </summary>
+
+            <p>
+              بله. سفارش‌ها و سرویس‌های شما از داخل پنل کاربری قابل مشاهده خواهند بود.
+            </p>
+          </details>
+
+        </div>
+
+      </div>
+
+    </section>
+
+
+    <!-- ================= FINAL CTA ================= -->
+
+    <section class="final-cta">
+
+      <div class="container">
+
+        <div class="final-cta-box">
+
+          <div class="final-cta-glow"></div>
+
+          <span class="section-label">
+            SAMI WIREGUARD
+          </span>
+
+          <h2>
+            آماده‌ای
+            <span>شروع کنی؟</span>
+          </h2>
+
+          <p>
+            پلن مناسب خودت را انتخاب کن و سرویس WireGuard را دریافت کن.
+          </p>
+
+          <a
+            href="#plans"
+            class="primary-button large-button"
+          >
+            مشاهده پلن‌ها
+            <span>←</span>
           </a>
 
         </div>
@@ -485,223 +676,236 @@
   </main>
 
 
-  <!-- FOOTER -->
+  <!-- ================= FOOTER ================= -->
+
   <footer class="site-footer">
 
-    <div>
-      ⚡ SAMI // WIREGUARD
+    <div class="container footer-grid">
+
+      <div class="footer-brand">
+
+        <a href="#home" class="brand">
+
+          <span class="brand-mark">S</span>
+
+          <span class="brand-text">
+            <strong>SAMI</strong>
+            <small>WIREGUARD</small>
+          </span>
+
+        </a>
+
+        <p>
+          سرویس WireGuard با تحویل کانفیگ، QR Code و پشتیبانی.
+        </p>
+
+      </div>
+
+
+      <div class="footer-column">
+
+        <h4>محصول</h4>
+
+        <a href="#plans">پلن‌ها</a>
+        <a href="#features">مزایا</a>
+        <a href="#how-it-works">نحوه استفاده</a>
+
+      </div>
+
+
+      <div class="footer-column">
+
+        <h4>پشتیبانی</h4>
+
+        <a
+          href="https://t.me/saman_s87"
+          target="_blank"
+          rel="noopener"
+        >
+          تلگرام
+        </a>
+
+        <a href="#faq">
+          سؤالات متداول
+        </a>
+
+      </div>
+
+
+      <div class="footer-column">
+
+        <h4>حساب کاربری</h4>
+
+        <button
+          type="button"
+          onclick="openAuth()"
+        >
+          ورود / ثبت‌نام
+        </button>
+
+        <a href="#plans">
+          خرید سرویس
+        </a>
+
+      </div>
+
     </div>
 
-    <div>
-      CYBER NETWORK SYSTEM © 2026
-    </div>
 
-    <div>
-      <span class="status-dot"></span>
-      ALL SYSTEMS OPERATIONAL
+    <div class="container footer-bottom">
+
+      <span>
+        © 2026 Sami WireGuard
+      </span>
+
+      <span>
+        WireGuard • Secure • Fast
+      </span>
+
     </div>
 
   </footer>
 
 
-  <!-- AUTH MODAL -->
+  <!-- ================= AUTH MODAL ================= -->
+
   <div
+    class="modal"
     id="authModal"
-    class="modal hidden"
+    aria-hidden="true"
   >
 
-    <div
-      class="modal-backdrop"
-      onclick="closeAuth()"
-    ></div>
+    <div class="modal-overlay" onclick="closeAuth()"></div>
 
-    <div class="modal-panel auth-panel">
+    <div class="modal-box auth-modal-box">
 
       <button
+        type="button"
         class="modal-close"
         onclick="closeAuth()"
       >
         ×
       </button>
 
-      <!-- PHONE -->
-      <div
-        id="authPhone"
-        class="auth-step"
-      >
+      <div class="modal-icon">
+        📱
+      </div>
 
-        <div class="modal-icon">
-          📱
-        </div>
+      <h2>
+        ورود به حساب
+      </h2>
 
-        <span class="eyebrow">
-          PLAYER REGISTRATION
-        </span>
+      <p class="modal-description">
+        برای ادامه شماره موبایل خود را وارد کنید.
+      </p>
 
-        <h2>
-          CREATE
-          <span>ACCOUNT</span>
-        </h2>
 
-        <p>
-          شماره موبایل خود را وارد کنید.
-        </p>
+      <div id="authStepPhone">
 
-        <label>
+        <label for="phoneInput">
           شماره موبایل
         </label>
 
         <input
           id="phoneInput"
-          class="cyber-input"
           type="tel"
           inputmode="tel"
-          placeholder="09123456789"
-          maxlength="13"
-        >
+          placeholder="0912xxxxxxx"
+          autocomplete="tel"
+        />
 
         <button
-          class="cyber-button primary full"
+          type="button"
+          class="primary-button full-button"
           onclick="requestOTP()"
         >
-          SEND VERIFICATION CODE
-          <b>→</b>
+          دریافت کد
         </button>
-
-        <div
-          id="authPhoneMessage"
-          class="form-message"
-        ></div>
 
       </div>
 
 
-      <!-- OTP -->
       <div
-        id="authOtp"
-        class="auth-step hidden"
+        id="authStepOtp"
+        style="display:none;"
       >
 
-        <div class="modal-icon">
-          🔐
-        </div>
-
-        <span class="eyebrow">
-          SECURITY CHECK
-        </span>
-
-        <h2>
-          VERIFY
-          <span>NUMBER</span>
-        </h2>
-
-        <p>
-          کد ارسال‌شده را وارد کنید.
-        </p>
+        <label for="otpInput">
+          کد تأیید
+        </label>
 
         <input
           id="otpInput"
-          class="cyber-input otp-input"
           type="text"
           inputmode="numeric"
           maxlength="6"
-          placeholder="••••••"
-        >
+          placeholder="------"
+          autocomplete="one-time-code"
+        />
 
         <button
-          class="cyber-button primary full"
+          type="button"
+          class="primary-button full-button"
           onclick="verifyOTP()"
         >
-          VERIFY PLAYER
-          <b>→</b>
+          تأیید و ورود
         </button>
 
         <button
+          type="button"
           class="text-button"
           onclick="backToPhone()"
         >
           تغییر شماره
         </button>
 
-        <div
-          id="authOtpMessage"
-          class="form-message"
-        ></div>
-
       </div>
 
 
-      <!-- SUCCESS -->
       <div
-        id="authSuccess"
-        class="auth-step hidden"
-      >
-
-        <div class="success-icon">
-          ✓
-        </div>
-
-        <span class="eyebrow">
-          PLAYER VERIFIED
-        </span>
-
-        <h2>
-          SYSTEM
-          <span>READY</span>
-        </h2>
-
-        <p>
-          حساب شما با موفقیت فعال شد.
-        </p>
-
-        <div
-          id="playerInfo"
-          class="player-info"
-        ></div>
-
-        <button
-          class="cyber-button primary full"
-          onclick="closeAuth()"
-        >
-          ENTER STORE
-          <b>→</b>
-        </button>
-
-      </div>
+        id="authMessage"
+        class="form-message"
+      ></div>
 
     </div>
 
   </div>
 
 
-  <!-- CHECKOUT MODAL -->
+  <!-- ================= CHECKOUT MODAL ================= -->
+
   <div
+    class="modal"
     id="checkoutModal"
-    class="modal hidden"
+    aria-hidden="true"
   >
 
     <div
-      class="modal-backdrop"
+      class="modal-overlay"
       onclick="closeCheckout()"
     ></div>
 
-    <div class="modal-panel checkout-panel">
+    <div class="modal-box checkout-modal-box">
 
       <button
+        type="button"
         class="modal-close"
         onclick="closeCheckout()"
       >
         ×
       </button>
 
-      <span class="eyebrow">
-        SECURE PURCHASE
-      </span>
+      <div class="checkout-header">
 
-      <h2>
-        CHECK
-        <span>OUT</span>
-      </h2>
+        <span class="section-label">
+          ثبت سفارش
+        </span>
+
+        <h2>
+          تکمیل خرید
+        </h2>
+
+      </div>
 
 
       <div
@@ -712,82 +916,75 @@
 
       <div class="payment-box">
 
-        <div class="payment-title">
-          💳 PAYMENT NETWORK
-        </div>
+        <h3>
+          اطلاعات پرداخت
+        </h3>
 
-        <div class="card-number">
-          <span id="paymentCard">
-            --
+        <div class="payment-row">
+
+          <span>
+            شماره کارت
           </span>
+
+          <strong id="paymentCard">
+            -
+          </strong>
+
         </div>
 
-        <div class="card-owner">
-          به نام:
+        <div class="payment-row">
+
+          <span>
+            به نام
+          </span>
+
           <strong id="paymentName">
-            --
+            -
           </strong>
+
         </div>
 
       </div>
 
 
-      <form
-        id="orderForm"
-        class="order-form"
-      >
+      <form id="orderForm">
 
         <input
           type="hidden"
           id="productId"
-        >
+          name="productId"
+        />
 
-        <label>
+        <label for="orderPhone">
           شماره موبایل
         </label>
 
         <input
           id="orderPhone"
-          class="cyber-input"
+          name="phone"
           type="tel"
           readonly
-        >
+        />
 
-        <label>
-          رسید پرداخت
+
+        <label for="receipt">
+          تصویر رسید پرداخت
         </label>
 
-        <label
-          class="upload-box"
-          for="receipt"
-        >
-
-          <span>📎</span>
-
-          <strong>
-            UPLOAD RECEIPT
-          </strong>
-
-          <small>
-            JPG / PNG / PDF — MAX 8MB
-          </small>
-
-          <input
-            id="receipt"
-            type="file"
-            accept="image/*,.pdf"
-            required
-          >
-
-        </label>
+        <input
+          id="receipt"
+          name="receipt"
+          type="file"
+          accept="image/*"
+          required
+        />
 
 
         <button
           type="submit"
-          class="cyber-button primary full"
+          class="primary-button full-button"
         >
-          CONFIRM PURCHASE
-          <b>→</b>
+          ارسال سفارش
         </button>
 
         <div
@@ -802,7 +999,8 @@
   </div>
 
 
-  <!-- APP -->
+  <!-- ================= APP ================= -->
+
   <script src="/app.js"></script>
 
 </body>
