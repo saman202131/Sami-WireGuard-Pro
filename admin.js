@@ -1,985 +1,909 @@
-let token = localStorage.getItem('sami_admin_token');
-let me = JSON.parse(localStorage.getItem('sami_admin_user') || 'null');
+/* =========================================================
+   SAMI WIREGUARD — ADMIN PANEL
+========================================================= */
 
-const menu = [
-  ['dashboard','📊 داشبورد'],
-  ['categories','🧩 دسته‌بندی‌ها'],
-  ['products','📦 محصولات'],
-  ['orders','🧾 سفارش‌ها'],
-  ['customers','👥 مشتری‌ها'],
-  ['services','🛰️ سرویس‌ها'],
-  ['tickets','🎫 تیکت‌ها'],
-  ['coupons','🎟️ کد تخفیف'],
-  ['flash','⚡ فلش‌سیل'],
-  ['wheel','🎡 گردونه شانس'],
-  ['telegram','📲 تلگرام'],
-  ['settings','⚙️ تنظیمات'],
-  ['servers','🖥️ سرورها'],
-  ['wallet','💳 کیف پول'],
-  ['vip','👑 VIP'],
-  ['loyalty','💎 وفاداری'],
-  ['missions','🎯 ماموریت‌ها'],
-  ['referral','🎁 معرفی دوستان'],
-  ['notifications','🔔 اعلان‌ها'],
-  ['analytics','📈 آمار'],
-  ['audit','🛡️ لاگ‌ها'],
-  ['backup','💾 بکاپ']
-];
+const ADMIN_TOKEN_KEY = "sami_admin_token";
 
-const $ = s => document.querySelector(s);
+const state = {
+  token: localStorage.getItem(ADMIN_TOKEN_KEY) || "",
+  currentPage: "dashboard",
+  products: [],
+  orders: [],
+  customers: [],
+  services: [],
+  settings: {},
+  categories: [],
+  currentProduct: null
+};
 
-const esc = x => String(x ?? '').replace(
-  /[&<>"']/g,
-  m => ({
-    '&':'&amp;',
-    '<':'&lt;',
-    '>':'&gt;',
-    '"':'&quot;',
-    "'":'&#039;'
-  }[m])
-);
+/* =========================================================
+   DOM
+========================================================= */
 
-function toast(message, bad = false) {
-  const t = $('#toast');
-  if (!t) return;
+const $ = (selector) => document.querySelector(selector);
 
-  t.textContent = message;
-  t.style.borderColor = bad ? '#7a2d3d' : '#315a76';
-  t.classList.add('show');
+const loginScreen = $("#loginScreen");
+const adminApp = $("#adminApp");
+const loginForm = $("#loginForm");
+const loginUsername = $("#loginUsername");
+const loginPassword = $("#loginPassword");
+const loginButton = $("#loginButton");
+const loginMessage = $("#loginMessage");
 
-  setTimeout(() => t.classList.remove('show'), 2200);
+const content = $("#content");
+const pageKicker = $("#pageKicker");
+const pageTitle = $("#pageTitle");
+const refreshButton = $("#refreshButton");
+const mobileMenuButton = $("#mobileMenuButton");
+
+const adminModal = $("#adminModal");
+const modalContent = $("#modalContent");
+const modalClose = $("#modalClose");
+
+const adminToast = $("#adminToast");
+
+/* =========================================================
+   INIT
+========================================================= */
+
+document.addEventListener("DOMContentLoaded", initAdmin);
+
+async function initAdmin() {
+  bindEvents();
+
+  if (!state.token) {
+    showLogin();
+    return;
+  }
+
+  const valid = await validateAdminSession();
+
+  if (valid) {
+    showAdmin();
+    await loadInitialData();
+  } else {
+    showLogin();
+  }
 }
 
-async function api(url, options = {}) {
-  options.headers = {
-    ...(options.headers || {}),
-    Authorization: 'Bearer ' + token
+/* =========================================================
+   EVENTS
+========================================================= */
+
+function bindEvents() {
+  if (loginForm) {
+    loginForm.addEventListener("submit", handleLogin);
+  }
+
+  if (refreshButton) {
+    refreshButton.addEventListener("click", () => {
+      loadPage(state.currentPage, true);
+    });
+  }
+
+  if (mobileMenuButton) {
+    mobileMenuButton.addEventListener("click", toggleMobileMenu);
+  }
+
+  if (modalClose) {
+    modalClose.addEventListener("click", closeModal);
+  }
+
+  if (adminModal) {
+    const overlay = adminModal.querySelector(".admin-modal-overlay");
+
+    if (overlay) {
+      overlay.addEventListener("click", closeModal);
+    }
+  }
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      closeModal();
+      closeMobileMenu();
+    }
+  });
+
+  bindMenu();
+}
+
+function bindMenu() {
+  const menuItems = document.querySelectorAll("[data-page]");
+
+  menuItems.forEach((item) => {
+    item.addEventListener("click", () => {
+      const page = item.dataset.page;
+
+      if (!page) return;
+
+      navigate(page);
+      closeMobileMenu();
+    });
+  });
+}
+
+/* =========================================================
+   AUTH
+========================================================= */
+
+async function handleLogin(event) {
+  event.preventDefault();
+
+  const username = loginUsername?.value.trim();
+  const password = loginPassword?.value;
+
+  if (!username || !password) {
+    setLoginMessage("نام کاربری و رمز عبور را وارد کنید.");
+    return;
+  }
+
+  setLoginLoading(true);
+
+  try {
+    const response = await fetch("/api/admin/login", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        username,
+        password
+      })
+    });
+
+    const data = await readJson(response);
+
+    if (!response.ok) {
+      throw new Error(data.message || "ورود ناموفق بود.");
+    }
+
+    if (!data.token) {
+      throw new Error("توکن ورود دریافت نشد.");
+    }
+
+    state.token = data.token;
+    localStorage.setItem(ADMIN_TOKEN_KEY, data.token);
+
+    setLoginMessage("");
+
+    showAdmin();
+
+    await loadInitialData();
+
+    toast("ورود موفق بود.", "success");
+  } catch (error) {
+    console.error(error);
+    setLoginMessage(error.message || "خطا در ورود.");
+  } finally {
+    setLoginLoading(false);
+  }
+}
+
+async function validateAdminSession() {
+  try {
+    const response = await apiFetch("/api/admin/me");
+
+    if (response.status === 401 || response.status === 403) {
+      clearAdminSession();
+      return false;
+    }
+
+    return response.ok;
+  } catch {
+    /*
+      اگر server فعلی endpoint /api/admin/me نداشت،
+      وجود توکن را موقتاً معتبر در نظر می‌گیریم.
+    */
+    return Boolean(state.token);
+  }
+}
+
+function logoutAdmin() {
+  clearAdminSession();
+  showLogin();
+  toast("از پنل خارج شدید.");
+}
+
+function clearAdminSession() {
+  state.token = "";
+  localStorage.removeItem(ADMIN_TOKEN_KEY);
+}
+
+function showLogin() {
+  if (loginScreen) {
+    loginScreen.hidden = false;
+    loginScreen.style.display = "";
+  }
+
+  if (adminApp) {
+    adminApp.hidden = true;
+  }
+}
+
+function showAdmin() {
+  if (loginScreen) {
+    loginScreen.hidden = true;
+    loginScreen.style.display = "none";
+  }
+
+  if (adminApp) {
+    adminApp.hidden = false;
+  }
+}
+
+function setLoginLoading(loading) {
+  if (!loginButton) return;
+
+  loginButton.disabled = loading;
+
+  loginButton.textContent = loading
+    ? "در حال اتصال..."
+    : "ورود به پنل";
+}
+
+function setLoginMessage(message) {
+  if (loginMessage) {
+    loginMessage.textContent = message || "";
+  }
+}
+
+/* =========================================================
+   API
+========================================================= */
+
+async function apiFetch(url, options = {}) {
+  const headers = new Headers(options.headers || {});
+
+  if (state.token) {
+    headers.set("Authorization", `Bearer ${state.token}`);
+  }
+
+  const response = await fetch(url, {
+    ...options,
+    headers
+  });
+
+  if (response.status === 401 || response.status === 403) {
+    /*
+      فقط در صورت endpointهای واقعی auth،
+      session را منقضی می‌کنیم.
+    */
+    if (
+      url.includes("/api/admin/") &&
+      url !== "/api/admin/login"
+    ) {
+      clearAdminSession();
+    }
+  }
+
+  return response;
+}
+
+async function readJson(response) {
+  const text = await response.text();
+
+  if (!text) {
+    return {};
+  }
+
+  try {
+    return JSON.parse(text);
+  } catch {
+    return {
+      message: text
+    };
+  }
+}
+
+async function apiJson(url, method = "GET", body = null) {
+  const options = {
+    method,
+    headers: {
+      "Content-Type": "application/json"
+    }
   };
 
-  if (
-    options.body &&
-    !(options.body instanceof FormData)
-  ) {
-    options.headers['Content-Type'] = 'application/json';
+  if (body !== null) {
+    options.body = JSON.stringify(body);
   }
 
-  const response = await fetch(url, options);
-
-  let data = {};
-  try {
-    data = await response.json();
-  } catch {}
-
-  if (response.status === 401) {
-    logout();
-    throw new Error('نشست مدیریت منقضی شده است');
-  }
+  const response = await apiFetch(url, options);
+  const data = await readJson(response);
 
   if (!response.ok) {
-    throw new Error(data.error || 'خطا در عملیات');
+    throw new Error(data.message || `خطای سرور: ${response.status}`);
   }
 
   return data;
 }
 
-async function login() {
-  const response = await fetch('/api/login', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({
-      username: $('#u').value,
-      password: $('#p').value
-    })
+/* =========================================================
+   INITIAL DATA
+========================================================= */
+
+async function loadInitialData() {
+  await Promise.allSettled([
+    loadProducts(),
+    loadOrders(),
+    loadCustomers(),
+    loadServices(),
+    loadSettings(),
+    loadCategories()
+  ]);
+
+  await loadPage("dashboard");
+}
+
+/* =========================================================
+   NAVIGATION
+========================================================= */
+
+async function navigate(page) {
+  state.currentPage = page;
+
+  updateMenuState(page);
+  updatePageHeader(page);
+
+  await loadPage(page);
+}
+
+function updateMenuState(page) {
+  document.querySelectorAll("[data-page]").forEach((item) => {
+    item.classList.toggle(
+      "active",
+      item.dataset.page === page
+    );
   });
-
-  const data = await response.json();
-
-  if (!response.ok) {
-    $('#le').textContent = 'نام کاربری یا رمز اشتباه است';
-    return;
-  }
-
-  token = data.token;
-  me = data.user;
-
-  localStorage.setItem('sami_admin_token', token);
-  localStorage.setItem(
-    'sami_admin_user',
-    JSON.stringify(me)
-  );
-
-  boot();
 }
 
-function logout() {
-  localStorage.removeItem('sami_admin_token');
-  localStorage.removeItem('sami_admin_user');
-  location.reload();
-}
-
-function boot() {
-  if (!token) return;
-
-  $('#login')?.classList.add('hidden');
-  $('#app')?.classList.remove('hidden');
-
-  if ($('#who')) {
-    $('#who').textContent =
-      '👤 ' +
-      (me?.username || 'admin') +
-      ' · ' +
-      (me?.role || 'owner');
-  }
-
-  if ($('#nav')) {
-    $('#nav').innerHTML = menu.map(item => `
-      <button
-        data-nav="${item[0]}"
-        onclick="show('${item[0]}')"
-      >
-        ${item[1]}
-      </button>
-    `).join('');
-  }
-
-  show('dashboard');
-}
-
-function setView(html) {
-  const view = $('#view');
-  if (view) view.innerHTML = html;
-}
-
-function buttons(html) {
-  return `<div class="actions">${html}</div>`;
-}
-
-async function show(type) {
-  document
-    .querySelectorAll('[data-nav]')
-    .forEach(button => {
-      button.classList.toggle(
-        'active',
-        button.dataset.nav === type
-      );
-    });
-
-  if ($('#title')) {
-    $('#title').textContent =
-      menu.find(x => x[0] === type)?.[1] || type;
-  }
-
-  const pages = {
-    dashboard,
-    categories,
-    products,
-    orders,
-    customers,
-    services,
-    tickets,
-    coupons,
-    flash,
-    wheel,
-    telegram,
-    settings,
-    servers,
-    wallet,
-    vip,
-    loyalty,
-    missions,
-    referral,
-    notifications,
-    analytics,
-    audit,
-    backup
+function updatePageHeader(page) {
+  const titles = {
+    dashboard: ["COMMAND CENTER", "داشبورد"],
+    categories: ["DATABASE // CATEGORIES", "دسته‌بندی‌ها"],
+    products: ["LOADOUT // PRODUCTS", "محصولات"],
+    orders: ["TRANSACTIONS // ORDERS", "سفارش‌ها"],
+    customers: ["PLAYERS // CUSTOMERS", "مشتری‌ها"],
+    services: ["DELIVERY // SERVICES", "سرویس‌ها"],
+    tickets: ["SUPPORT // TICKETS", "تیکت‌ها"],
+    coupons: ["PROMO // COUPONS", "کدهای تخفیف"],
+    servers: ["NETWORK // SERVERS", "سرورها"],
+    telegram: ["TELEGRAM // BOT", "تلگرام"],
+    notifications: ["SYSTEM // NOTIFICATIONS", "اعلان‌ها"],
+    analytics: ["INTEL // ANALYTICS", "آمار و تحلیل"],
+    audit: ["SECURITY // AUDIT", "گزارش فعالیت"],
+    backup: ["SYSTEM // BACKUP", "پشتیبان‌گیری"],
+    settings: ["CORE // SETTINGS", "تنظیمات"]
   };
 
-  try {
-    if (pages[type]) {
-      await pages[type]();
-    } else {
-      setView(`
-        <div class="content">
-          <h3>${esc(type)}</h3>
-          <p class="muted">این بخش آماده است.</p>
-        </div>
-      `);
-    }
-  } catch (error) {
-    setView(`
-      <div class="content">
-        <b>خطا:</b>
-        ${esc(error.message)}
-      </div>
-    `);
+  const [kicker, title] =
+    titles[page] || titles.dashboard;
+
+  if (pageKicker) {
+    pageKicker.textContent = kicker;
+  }
+
+  if (pageTitle) {
+    pageTitle.textContent = title;
   }
 }
 
+async function loadPage(page, refreshing = false) {
+  if (!content) return;
 
-/* =========================
-   DASHBOARD
-========================= */
+  if (refreshing) {
+    showLoading();
+  }
 
-async function dashboard() {
-  const d = await api('/api/dashboard');
+  try {
+    switch (page) {
+      case "dashboard":
+        renderDashboard();
+        break;
 
-  setView(`
-    <div class="cards">
-      ${[
-        ['orders','سفارش'],
-        ['pending','در انتظار'],
-        ['approved','تأییدشده'],
-        ['revenue','فروش تومان'],
-        ['products','محصول'],
-        ['customers','مشتری'],
-        ['tickets','تیکت باز'],
-        ['services','سرویس']
-      ].map(([key, title]) => `
-        <div class="stat">
-          ${title}
-          <b>${Number(d[key] || 0).toLocaleString('fa-IR')}</b>
+      case "categories":
+        renderCategoriesPage();
+        break;
+
+      case "products":
+        renderProductsPage();
+        break;
+
+      case "orders":
+        renderOrdersPage();
+        break;
+
+      case "customers":
+        renderCustomersPage();
+        break;
+
+      case "services":
+        renderServicesPage();
+        break;
+
+      case "tickets":
+        await renderTicketsPage();
+        break;
+
+      case "coupons":
+        await renderCouponsPage();
+        break;
+
+      case "servers":
+        await renderServersPage();
+        break;
+
+      case "telegram":
+        renderTelegramPage();
+        break;
+
+      case "notifications":
+        await renderNotificationsPage();
+        break;
+
+      case "analytics":
+        renderAnalyticsPage();
+        break;
+
+      case "audit":
+        await renderAuditPage();
+        break;
+
+      case "backup":
+        renderBackupPage();
+        break;
+
+      case "settings":
+        renderSettingsPage();
+        break;
+
+      default:
+        renderDashboard();
+    }
+  } catch (error) {
+    console.error(error);
+
+    content.innerHTML = `
+      <div class="admin-panel">
+        <div class="admin-empty">
+          <div class="admin-empty-icon">!</div>
+          <div class="admin-empty-title">
+            خطا در بارگذاری
+          </div>
+          <div class="admin-empty-text">
+            ${escapeHtml(error.message || "خطای ناشناخته")}
+          </div>
         </div>
-      `).join('')}
-    </div>
-
-    <div class="content">
-      <div class="section-title">
-        <h3>مرکز کنترل Sami WireGuard</h3>
-        <span class="pill">● ONLINE</span>
       </div>
-
-      <p class="muted">
-        مدیریت محصولات، سفارش‌ها، مشتری‌ها و تنظیمات فروشگاه.
-      </p>
-    </div>
-  `);
+    `;
+  }
 }
 
+/* =========================================================
+   PRODUCTS
+========================================================= */
 
-/* =========================
-   CATEGORIES
-========================= */
+async function loadProducts() {
+  try {
+    const response = await apiFetch("/api/products");
+    const data = await readJson(response);
 
-async function categories() {
-  const data = await api('/api/categories');
+    if (!response.ok) {
+      throw new Error(data.message || "خطا در دریافت محصولات");
+    }
 
-  setView(`
-    <div class="content">
-      <div class="section-title">
-        <h3>🧩 دسته‌بندی‌ها</h3>
+    state.products = Array.isArray(data)
+      ? data
+      : Array.isArray(data.products)
+        ? data.products
+        : [];
+  } catch (error) {
+    console.error("Products:", error);
+    state.products = [];
+  }
+}
+
+function renderProductsPage() {
+  content.innerHTML = `
+    <div class="admin-page">
+
+      <div class="admin-toolbar">
+        <div class="admin-toolbar-left">
+          <button
+            class="admin-btn admin-btn-primary"
+            onclick="openProductModal()"
+          >
+            + محصول جدید
+          </button>
+        </div>
+
+        <div class="admin-toolbar-right">
+          <button
+            class="admin-btn"
+            onclick="loadProductsAndRender()"
+          >
+            ↻ بروزرسانی
+          </button>
+        </div>
       </div>
 
       ${
-        data.map(item => `
-          <div class="field" style="margin:9px 0">
-            <b>${esc(item.name)}</b>
+        state.products.length
+          ? `
+            <div class="admin-product-grid">
+              ${state.products.map(renderProductCard).join("")}
+            </div>
+          `
+          : emptyState(
+              "محصولی وجود ندارد",
+              "اولین محصول فروشگاه را ایجاد کنید."
+            )
+      }
 
-            <span class="pill" style="margin:0 10px">
-              ${item.active ? 'فعال' : 'خاموش'}
-            </span>
+    </div>
+  `;
+}
 
-            <button
-              class="${item.active ? 'danger' : 'primary'}"
-              onclick="toggleCategory(
-                '${item.id}',
-                ${!item.active}
-              )"
-            >
-              ${item.active ? 'خاموش کن' : 'فعال کن'}
-            </button>
+async function loadProductsAndRender() {
+  showLoading();
+
+  await loadProducts();
+
+  renderProductsPage();
+}
+
+function renderProductCard(product) {
+  const active =
+    product.active !== false &&
+    product.isActive !== false;
+
+  const stock =
+    product.stock === undefined ||
+    product.stock === null
+      ? "نامحدود"
+      : product.stock;
+
+  return `
+    <div class="admin-product-card">
+
+      <div class="admin-product-top">
+        <div>
+          <div class="admin-product-name">
+            ${escapeHtml(product.name || "بدون نام")}
           </div>
-        `).join('')
-      }
-    </div>
-  `);
-}
 
-async function toggleCategory(id, active) {
-  await api('/api/categories/' + id, {
-    method: 'PUT',
-    body: JSON.stringify({ active })
-  });
-
-  toast('دسته‌بندی ذخیره شد');
-  categories();
-}
-
-
-/* =========================
-   PRODUCTS
-========================= */
-
-async function products() {
-  const data = await api('/api/products');
-
-  setView(`
-    <div class="content">
-
-      <div class="section-title">
-        <h3>📦 مدیریت محصولات</h3>
-
-        <button
-          class="primary"
-          onclick="editProduct()"
-        >
-          ➕ محصول جدید
-        </button>
-      </div>
-
-      <div class="tablewrap">
-        <table class="table">
-
-          <thead>
-            <tr>
-              <th>محصول</th>
-              <th>دسته</th>
-              <th>قیمت</th>
-              <th>مدت</th>
-              <th>حجم</th>
-              <th>موجودی</th>
-              <th>وضعیت</th>
-              <th>عملیات</th>
-            </tr>
-          </thead>
-
-          <tbody>
-
-            ${
-              data.length
-                ? data.map(item => `
-                    <tr>
-
-                      <td>
-                        <b>${esc(item.name)}</b>
-                        ${
-                          item.featured
-                            ? '<br><span class="pill">⭐ ویژه</span>'
-                            : ''
-                        }
-                      </td>
-
-                      <td>
-                        ${esc(item.category)}
-                      </td>
-
-                      <td>
-                        ${Number(item.price || 0)
-                          .toLocaleString('fa-IR')}
-                        تومان
-                      </td>
-
-                      <td>
-                        ${esc(item.duration || '-')}
-                      </td>
-
-                      <td>
-                        ${esc(item.volume || '-')}
-                      </td>
-
-                      <td>
-                        ${Number(item.stock || 0)
-                          .toLocaleString('fa-IR')}
-                      </td>
-
-                      <td>
-                        ${
-                          item.active !== false
-                            ? '<span class="pill">فعال</span>'
-                            : '<span class="pill">خاموش</span>'
-                        }
-                      </td>
-
-                      <td>
-                        ${buttons(`
-                          <button
-                            class="secondary"
-                            onclick='editProduct(${JSON.stringify(item)})'
-                          >
-                            ✏️ ویرایش
-                          </button>
-
-                          <button
-                            class="danger"
-                            onclick="deleteProduct('${item.id}')"
-                          >
-                            🗑️ حذف
-                          </button>
-                        `)}
-                      </td>
-
-                    </tr>
-                  `).join('')
-                : `
-                  <tr>
-                    <td colspan="8">
-                      هنوز محصولی ثبت نشده است.
-                    </td>
-                  </tr>
-                `
-            }
-
-          </tbody>
-
-        </table>
-      </div>
-
-    </div>
-  `);
-}
-
-
-function editProduct(product = {}) {
-  setView(`
-    <div class="content">
-
-      <div class="section-title">
-        <h3>
-          ${
-            product.id
-              ? '✏️ ویرایش محصول'
-              : '➕ محصول جدید'
-          }
-        </h3>
-
-        <button
-          class="ghost"
-          onclick="products()"
-        >
-          بازگشت
-        </button>
-      </div>
-
-      <div class="form-grid">
-
-        <div class="field">
-          <label>نام محصول</label>
-          <input
-            id="pn"
-            value="${esc(product.name || '')}"
-            placeholder="مثلاً WireGuard Premium"
-          >
+          <div class="admin-product-category">
+            ${escapeHtml(
+              product.category ||
+              product.type ||
+              "wireguard"
+            )}
+          </div>
         </div>
 
-        <div class="field">
-          <label>دسته</label>
-
-          <select id="pc">
-
-            <option
-              value="wg"
-              ${product.category === 'wg' ? 'selected' : ''}
-            >
-              WireGuard
-            </option>
-
-            <option
-              value="dns"
-              ${product.category === 'dns' ? 'selected' : ''}
-            >
-              DNS
-            </option>
-
-            <option
-              value="v2ray"
-              ${product.category === 'v2ray' ? 'selected' : ''}
-            >
-              V2Ray
-            </option>
-
-          </select>
-        </div>
-
-        <div class="field">
-          <label>قیمت تومان</label>
-
-          <input
-            id="pp"
-            type="number"
-            min="0"
-            value="${Number(product.price || 0)}"
-          >
-        </div>
-
-        <div class="field">
-          <label>موجودی</label>
-
-          <input
-            id="ps"
-            type="number"
-            min="0"
-            value="${Number(product.stock ?? 0)}"
-          >
-        </div>
-
-        <div class="field">
-          <label>مدت</label>
-
-          <input
-            id="pd"
-            value="${esc(product.duration || '')}"
-            placeholder="مثلاً 30 روز"
-          >
-        </div>
-
-        <div class="field">
-          <label>حجم</label>
-
-          <input
-            id="pv"
-            value="${esc(product.volume || '')}"
-            placeholder="مثلاً 100GB"
-          >
-        </div>
-
-        <label class="check">
-          <input
-            id="pa"
-            type="checkbox"
-            ${product.active !== false ? 'checked' : ''}
-          >
-          فعال باشد
-        </label>
-
-        <label class="check">
-          <input
-            id="pf"
-            type="checkbox"
-            ${product.featured ? 'checked' : ''}
-          >
-          ⭐ محصول ویژه
-        </label>
-
-        <div class="wide">
-
-          <button
-            class="primary"
-            onclick="saveProduct('${product.id || ''}')"
-          >
-            💾 ذخیره محصول
-          </button>
-
-        </div>
-
-      </div>
-    </div>
-  `);
-}
-
-
-async function saveProduct(id) {
-
-  const name = $('#pn')?.value.trim();
-
-  if (!name) {
-    toast('نام محصول را وارد کنید', true);
-    return;
-  }
-
-  const data = {
-    name,
-    category: $('#pc').value,
-    price: Number($('#pp').value || 0),
-    stock: Number($('#ps').value || 0),
-    duration: $('#pd').value.trim(),
-    volume: $('#pv').value.trim(),
-    active: $('#pa').checked,
-    featured: $('#pf').checked
-  };
-
-  try {
-
-    await api(
-      id
-        ? '/api/products/' + id
-        : '/api/products',
-      {
-        method: id ? 'PUT' : 'POST',
-        body: JSON.stringify(data)
-      }
-    );
-
-    toast('✅ محصول با موفقیت ذخیره شد');
-
-    await products();
-
-  } catch (error) {
-
-    toast(error.message, true);
-
-  }
-}
-
-
-async function deleteProduct(id) {
-
-  if (!confirm('این محصول حذف شود؟')) {
-    return;
-  }
-
-  await api('/api/products/' + id, {
-    method: 'DELETE'
-  });
-
-  toast('محصول حذف شد');
-
-  products();
-}
-
-
-/* =========================
-   ORDERS
-========================= */
-
-async function orders() {
-
-  const data = await api('/api/orders');
-
-  setView(`
-    <div class="content">
-
-      <div class="section-title">
-        <h3>🧾 سفارش‌ها</h3>
-        <span class="muted">
-          ${data.length} سفارش
+        <span class="status-badge ${
+          active ? "green" : "red"
+        }">
+          ${active ? "فعال" : "غیرفعال"}
         </span>
       </div>
 
-      <div class="tablewrap">
-
-        <table class="table">
-
-          <thead>
-            <tr>
-              <th>محصول</th>
-              <th>مشتری</th>
-              <th>مبلغ</th>
-              <th>رسید</th>
-              <th>وضعیت</th>
-              <th>عملیات</th>
-            </tr>
-          </thead>
-
-          <tbody>
-
-            ${
-              data.map(order => `
-                <tr>
-
-                  <td>
-                    ${esc(order.productName)}
-                  </td>
-
-                  <td>
-                    ${esc(order.customerName)}
-                    <br>
-                    ${esc(order.customerContact)}
-                  </td>
-
-                  <td>
-                    ${Number(order.amount || 0)
-                      .toLocaleString('fa-IR')}
-                    تومان
-                  </td>
-
-                  <td>
-                    ${
-                      order.receipt
-                        ? `<a
-                            href="${esc(order.receipt)}"
-                            target="_blank"
-                          >
-                            🧾 مشاهده
-                           </a>`
-                        : '—'
-                    }
-                  </td>
-
-                  <td>
-                    <span class="pill">
-                      ${esc(order.status)}
-                    </span>
-                  </td>
-
-                  <td>
-
-                    <select id="st_${order.id}">
-                      <option value="pending"
-                        ${order.status === 'pending' ? 'selected' : ''}>
-                        pending
-                      </option>
-
-                      <option value="approved"
-                        ${order.status === 'approved' ? 'selected' : ''}>
-                        approved
-                      </option>
-
-                      <option value="rejected"
-                        ${order.status === 'rejected' ? 'selected' : ''}>
-                        rejected
-                      </option>
-
-                      <option value="delivered"
-                        ${order.status === 'delivered' ? 'selected' : ''}>
-                        delivered
-                      </option>
-                    </select>
-
-                    <button
-                      class="secondary"
-                      onclick="statusOrder('${order.id}')"
-                    >
-                      💾
-                    </button>
-
-                    <button
-                      class="primary"
-                      onclick='delivery(${JSON.stringify(order)})'
-                    >
-                      📤 تحویل
-                    </button>
-
-                  </td>
-
-                </tr>
-              `).join('')
-            }
-
-          </tbody>
-
-        </table>
-
+      <div class="admin-product-price">
+        ${formatPrice(product.price)}
       </div>
 
-    </div>
-  `);
-}
+      <div class="admin-product-stock">
+        موجودی:
+        ${escapeHtml(String(stock))}
+      </div>
 
-
-async function statusOrder(id) {
-
-  await api('/api/orders/' + id + '/status', {
-    method: 'PUT',
-    body: JSON.stringify({
-      status: $('#st_' + id).value
-    })
-  });
-
-  toast('وضعیت سفارش ذخیره شد');
-
-  orders();
-}
-
-
-function delivery(order) {
-
-  setView(`
-    <div class="content">
-
-      <div class="section-title">
-        <h3>
-          📤 تحویل سفارش
-          ${esc(order.id)}
-        </h3>
+      <div class="admin-product-actions">
+        <button
+          class="admin-btn admin-btn-sm"
+          onclick="openProductModal('${escapeAttr(product.id)}')"
+        >
+          ویرایش
+        </button>
 
         <button
-          class="ghost"
-          onclick="orders()"
+          class="admin-btn admin-btn-sm admin-btn-danger"
+          onclick="deleteProduct('${escapeAttr(product.id)}')"
         >
-          بازگشت
+          حذف
         </button>
       </div>
 
-      <div class="form-grid">
+    </div>
+  `;
+}
 
-        <div class="field wide">
-          <label>لینک اشتراک</label>
-          <input
-            id="dl"
-            value="${esc(order.delivery?.link || '')}"
-          >
+function openProductModal(productId = null) {
+  const product =
+    productId
+      ? state.products.find(
+          (item) => String(item.id) === String(productId)
+        )
+      : null;
+
+  state.currentProduct = product || null;
+
+  openModal(
+    product
+      ? "ویرایش محصول"
+      : "ایجاد محصول جدید",
+    `
+      <form id="productForm">
+
+        <div class="admin-form-grid">
+
+          <div class="admin-form-group">
+            <label class="admin-form-label">
+              نام محصول
+            </label>
+
+            <input
+              class="admin-input"
+              id="productName"
+              required
+              value="${escapeAttr(product?.name || "")}"
+              placeholder="مثلاً WireGuard Gamer"
+            >
+          </div>
+
+          <div class="admin-form-group">
+            <label class="admin-form-label">
+              دسته‌بندی
+            </label>
+
+            <select
+              class="admin-select"
+              id="productCategory"
+            >
+              <option value="wireguard"
+                ${product?.category === "wireguard" ? "selected" : ""}>
+                WireGuard
+              </option>
+
+              <option value="dns"
+                ${product?.category === "dns" ? "selected" : ""}>
+                DNS
+              </option>
+
+              <option value="v2ray"
+                ${product?.category === "v2ray" ? "selected" : ""}>
+                V2Ray
+              </option>
+            </select>
+          </div>
+
+          <div class="admin-form-group">
+            <label class="admin-form-label">
+              قیمت
+            </label>
+
+            <input
+              class="admin-input"
+              id="productPrice"
+              type="number"
+              min="0"
+              required
+              value="${escapeAttr(product?.price ?? "")}"
+              placeholder="250000"
+            >
+          </div>
+
+          <div class="admin-form-group">
+            <label class="admin-form-label">
+              موجودی
+            </label>
+
+            <input
+              class="admin-input"
+              id="productStock"
+              type="number"
+              min="0"
+              value="${escapeAttr(product?.stock ?? "")}"
+              placeholder="نامحدود = خالی"
+            >
+          </div>
+
+          <div class="admin-form-group full">
+            <label class="admin-form-label">
+              توضیحات
+            </label>
+
+            <textarea
+              class="admin-textarea"
+              id="productDescription"
+              placeholder="توضیحات محصول..."
+            >${escapeHtml(product?.description || "")}</textarea>
+          </div>
+
+          <div class="admin-form-group">
+            <label class="admin-form-label">
+              مدت سرویس
+            </label>
+
+            <input
+              class="admin-input"
+              id="productDuration"
+              value="${escapeAttr(product?.duration || "")}"
+              placeholder="30 روز"
+            >
+          </div>
+
+          <div class="admin-form-group">
+            <label class="admin-form-label">
+              وضعیت
+            </label>
+
+            <select
+              class="admin-select"
+              id="productActive"
+            >
+              <option value="true"
+                ${product?.active !== false ? "selected" : ""}>
+                فعال
+              </option>
+
+              <option value="false"
+                ${product?.active === false ? "selected" : ""}>
+                غیرفعال
+              </option>
+            </select>
+          </div>
+
         </div>
 
-        <div class="field wide">
-          <label>کانفیگ WireGuard</label>
-
-          <textarea
-            id="dc"
-            rows="10"
-          >${esc(order.delivery?.config || '')}</textarea>
-        </div>
-
-        <div class="field wide">
-          <label>QR</label>
-
-          <textarea
-            id="dq"
-            rows="3"
-          >${esc(order.delivery?.qr || '')}</textarea>
-        </div>
-
-        <div class="field wide">
-          <label>یادداشت مشتری</label>
-
-          <textarea
-            id="dn"
-            rows="4"
-          >${esc(order.delivery?.notes || '')}</textarea>
-        </div>
-
-        <div class="wide">
+        <div class="admin-form-actions">
 
           <button
-            class="primary"
-            onclick="saveDelivery('${order.id}')"
+            type="submit"
+            class="admin-btn admin-btn-primary"
           >
-            💾 ثبت تحویل
+            ${product ? "ذخیره تغییرات" : "ایجاد محصول"}
+          </button>
+
+          <button
+            type="button"
+            class="admin-btn"
+            onclick="closeModal()"
+          >
+            انصراف
           </button>
 
         </div>
 
+      </form>
+    `
+  );
+
+  const form = $("#productForm");
+
+  if (form) {
+    form.addEventListener("submit", submitProduct);
+  }
+}
+
+async function submitProduct(event) {
+  event.preventDefault();
+
+  const productId =
+    state.currentProduct?.id || null;
+
+  const body = {
+    name: $("#productName")?.value.trim(),
+    category: $("#productCategory")?.value,
+    price: Number($("#productPrice")?.value || 0),
+    description: $("#productDescription")?.value.trim(),
+    duration: $("#productDuration")?.value.trim(),
+    active: $("#productActive")?.value === "true"
+  };
+
+  const stockValue = $("#productStock")?.value;
+
+  if (stockValue !== "") {
+    body.stock = Number(stockValue);
+  }
+
+  if (!body.name) {
+    toast("نام محصول الزامی است.", "error");
+    return;
+  }
+
+  try {
+    const url = productId
+      ? `/api/products/${encodeURIComponent(productId)}`
+      : "/api/products";
+
+    const method = productId ? "PUT" : "POST";
+
+    await apiJson(url, method, body);
+
+    await loadProducts();
+
+    closeModal();
+
+    renderProductsPage();
+
+    toast(
+      productId
+        ? "محصول بروزرسانی شد."
+        : "محصول ایجاد شد.",
+      "success"
+    );
+  } catch (error) {
+    toast(error.message, "error");
+  }
+}
+
+async function deleteProduct(productId) {
+  const product = state.products.find(
+    (item) => String(item.id) === String(productId)
+  );
+
+  const confirmed = confirm(
+    `محصول «${product?.name || "بدون نام"}» حذف شود؟`
+  );
+
+  if (!confirmed) return;
+
+  try {
+    await apiJson(
+      `/api/products/${encodeURIComponent(productId)}`,
+      "DELETE"
+    );
+
+    await loadProducts();
+
+    renderProductsPage();
+
+    toast("محصول حذف شد.", "success");
+  } catch (error) {
+    toast(error.message, "error");
+  }
+}
+
+/* =========================================================
+   ORDERS
+========================================================= */
+
+async function loadOrders() {
+  try {
+    const response = await apiFetch("/api/orders");
+    const data = await readJson(response);
+
+    if (!response.ok) {
+      throw new Error(data.message || "خطا در دریافت سفارش‌ها");
+    }
+
+    state.orders = Array.isArray(data)
+      ? data
+      : Array.isArray(data.orders)
+        ? data.orders
+        : [];
+  } catch (error) {
+    console.error("Orders:", error);
+    state.orders = [];
+  }
+}
+
+function renderOrdersPage() {
+  content.innerHTML = `
+    <div class="admin-page">
+
+      <div class="admin-toolbar">
+        <div class="admin-toolbar-left">
+          <div class="status-badge blue">
+            ${state.orders.length} سفارش
+          </div>
+        </div>
+
+        <div class="admin-toolbar-right">
+          <button
+            class="admin-btn"
+            onclick="loadOrdersAndRender()"
+          >
+            ↻ بروزرسانی
+          </button>
+        </div>
       </div>
-
-    </div>
-  `);
-}
-
-
-async function saveDelivery(id) {
-
-  await api('/api/orders/' + id + '/delivery', {
-    method: 'PUT',
-    body: JSON.stringify({
-      link: $('#dl').value,
-      config: $('#dc').value,
-      qr: $('#dq').value,
-      notes: $('#dn').value
-    })
-  });
-
-  toast('تحویل ثبت شد');
-
-  orders();
-}
-
-
-/* =========================
-   CUSTOMERS
-========================= */
-
-async function customers() {
-
-  const data = await api('/api/customers');
-
-  genericTable(
-    '👥 مشتری‌ها',
-    data,
-    [
-      ['name','نام'],
-      ['contact','تماس'],
-      ['lastOrder','آخرین سفارش'],
-      ['createdAt','تاریخ']
-    ]
-  );
-}
-
-
-/* =========================
-   SERVICES
-========================= */
-
-async function services() {
-
-  const data = await api('/api/services');
-
-  genericTable(
-    '🛰️ سرویس‌ها',
-    data,
-    [
-      ['name','نام'],
-      ['status','وضعیت'],
-      ['id','ID']
-    ]
-  );
-}
-
-
-/* =========================
-   TICKETS
-========================= */
-
-async function tickets() {
-
-  const data = await api('/api/tickets');
-
-  setView(`
-    <div class="content">
-
-      <h3>🎫 تیکت‌ها</h3>
-
-      ${
-        data.length
-          ? data.map(ticket => `
-              <div class="field">
-
-                <b>
-                  ${esc(ticket.subject)}
-                </b>
-
-                · ${esc(ticket.status)}
-
-                <p>
-                  ${esc(ticket.message)}
-                </p>
-
-                <small>
-                  ${esc(ticket.name)}
-                  —
-                  ${esc(ticket.contact)}
-                </small>
-
-                <br>
-
-                <button
-                  class="secondary"
-                  onclick="closeTicket('${ticket.id}')"
-                >
-                  بستن تیکت
-                </button>
-
-              </div>
-            `).join('')
-          : '<div class="empty">تیکتی وجود ندارد.</div>'
-      }
-
-    </div>
-  `);
-}
-
-
-async function closeTicket(id) {
-
-  await api('/api/tickets/' + id, {
-    method: 'PUT',
-    body: JSON.stringify({
-      status: 'closed'
-    })
-  });
-
-  toast('تیکت بسته شد');
-
-  tickets();
-}
-
-
-/* =========================
-   GENERIC TABLE
-========================= */
-
-function genericTable(title, data, columns) {
-
-  setView(`
-    <div class="content">
-
-      <h3>${esc(title)}
