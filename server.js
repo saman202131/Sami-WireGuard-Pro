@@ -1191,5 +1191,650 @@ app.get(
 /* SERVICES                      */
 /* ----------------------------- */
 
+app.get(  "/api/services",
+  adminAuth,
+  (req, res) => {
+    res.json(readDB().services);
+  }
+);
+
 app.get(
- 
+  "/api/my-services",
+  auth,
+  (req, res) => {
+    if (req.user.role !== "user") {
+      return res.status(403).json({
+        error: "user_only"
+      });
+    }
+
+    const data = readDB();
+
+    res.json(
+      data.services.filter(
+        x => x.userId === req.user.user
+      )
+    );
+  }
+);
+
+/* ----------------------------- */
+/* TICKETS                       */
+/* ----------------------------- */
+
+app.get(
+  "/api/tickets",
+  adminAuth,
+  (req, res) => {
+    res.json(readDB().tickets);
+  }
+);
+
+app.post(
+  "/api/tickets",
+  auth,
+  (req, res) => {
+    if (req.user.role !== "user") {
+      return res.status(403).json({
+        error: "user_only"
+      });
+    }
+
+    const data = readDB();
+
+    const ticket = {
+      id: makeId("tkt"),
+
+      userId: req.user.user,
+
+      subject:
+        String(
+          req.body.subject ||
+          "Support"
+        ).trim(),
+
+      message:
+        String(
+          req.body.message || ""
+        ).trim(),
+
+      status: "open",
+
+      replies: [],
+
+      createdAt:
+        new Date().toISOString(),
+
+      updatedAt:
+        new Date().toISOString()
+    };
+
+    data.tickets.unshift(ticket);
+
+    audit(
+      data,
+      req.user.user,
+      "ticket.create",
+      ticket.id
+    );
+
+    saveDB(data);
+
+    res.json({
+      ok: true,
+      ticket
+    });
+  }
+);
+
+app.put(
+  "/api/tickets/:id",
+  adminAuth,
+  (req, res) => {
+    const data = readDB();
+
+    const ticket =
+      data.tickets.find(
+        x => x.id === req.params.id
+      );
+
+    if (!ticket) {
+      return res.status(404).json({
+        error: "not_found"
+      });
+    }
+
+    if (
+      req.body.status !== undefined
+    ) {
+      ticket.status =
+        req.body.status;
+    }
+
+    ticket.updatedAt =
+      new Date().toISOString();
+
+    saveDB(data);
+
+    res.json(ticket);
+  }
+);
+
+/* ----------------------------- */
+/* COUPONS                       */
+/* ----------------------------- */
+
+app.get(
+  "/api/coupons",
+  adminAuth,
+  (req, res) => {
+    res.json(readDB().coupons);
+  }
+);
+
+app.post(
+  "/api/coupons",
+  adminAuth,
+  (req, res) => {
+    const data = readDB();
+
+    const coupon = {
+      id: makeId("cpn"),
+
+      code:
+        String(
+          req.body.code || ""
+        )
+          .trim()
+          .toUpperCase(),
+
+      type:
+        req.body.type ||
+        "percent",
+
+      value:
+        Number(
+          req.body.value || 0
+        ),
+
+      active:
+        req.body.active !== false,
+
+      createdAt:
+        new Date().toISOString()
+    };
+
+    data.coupons.unshift(coupon);
+
+    saveDB(data);
+
+    res.json(coupon);
+  }
+);
+
+app.delete(
+  "/api/coupons/:id",
+  adminAuth,
+  (req, res) => {
+    const data = readDB();
+
+    const index =
+      data.coupons.findIndex(
+        x => x.id === req.params.id
+      );
+
+    if (index === -1) {
+      return res.status(404).json({
+        error: "not_found"
+      });
+    }
+
+    data.coupons.splice(index, 1);
+
+    saveDB(data);
+
+    res.json({
+      ok: true
+    });
+  }
+);
+
+/* ----------------------------- */
+/* SERVERS                       */
+/* ----------------------------- */
+
+app.get(
+  "/api/servers",
+  adminAuth,
+  (req, res) => {
+    res.json(readDB().servers);
+  }
+);
+
+app.post(
+  "/api/servers",
+  adminAuth,
+  (req, res) => {
+    const data = readDB();
+
+    const server = {
+      id: makeId("srv"),
+
+      name:
+        req.body.name ||
+        "Server",
+
+      host:
+        req.body.host || "",
+
+      port:
+        Number(
+          req.body.port || 51820
+        ),
+
+      protocol:
+        req.body.protocol ||
+        "wireguard",
+
+      location:
+        req.body.location || "",
+
+      active:
+        req.body.active !== false,
+
+      createdAt:
+        new Date().toISOString()
+    };
+
+    data.servers.unshift(server);
+
+    saveDB(data);
+
+    res.json(server);
+  }
+);
+
+app.delete(
+  "/api/servers/:id",
+  adminAuth,
+  (req, res) => {
+    const data = readDB();
+
+    const index =
+      data.servers.findIndex(
+        x => x.id === req.params.id
+      );
+
+    if (index === -1) {
+      return res.status(404).json({
+        error: "not_found"
+      });
+    }
+
+    data.servers.splice(index, 1);
+
+    saveDB(data);
+
+    res.json({
+      ok: true
+    });
+  }
+);
+
+/* ----------------------------- */
+/* NOTIFICATIONS                 */
+/* ----------------------------- */
+
+app.get(
+  "/api/notifications",
+  adminAuth,
+  (req, res) => {
+    res.json(
+      readDB().notifications
+    );
+  }
+);
+
+app.post(
+  "/api/notifications",
+  adminAuth,
+  (req, res) => {
+    const data = readDB();
+
+    const notification = {
+      id: makeId("ntf"),
+
+      userId:
+        req.body.userId || null,
+
+      type:
+        req.body.type ||
+        "system",
+
+      title:
+        req.body.title ||
+        "Notification",
+
+      message:
+        req.body.message ||
+        "",
+
+      read: false,
+
+      createdAt:
+        new Date().toISOString()
+    };
+
+    data.notifications.unshift(
+      notification
+    );
+
+    saveDB(data);
+
+    res.json(notification);
+  }
+);
+
+/* ----------------------------- */
+/* AUDIT                         */
+/* ----------------------------- */
+
+app.get(
+  "/api/audit",
+  adminAuth,
+  (req, res) => {
+    res.json(readDB().audit);
+  }
+);
+
+/* ----------------------------- */
+/* ANALYTICS                     */
+/* ----------------------------- */
+
+app.get(
+  "/api/analytics",
+  adminAuth,
+  (req, res) => {
+    const data = readDB();
+
+    const paidOrders =
+      data.orders.filter(
+        x =>
+          x.status === "approved" ||
+          x.status === "delivered"
+      );
+
+    const revenue =
+      paidOrders.reduce(
+        (sum, order) =>
+          sum +
+          Number(
+            order.amount || 0
+          ),
+        0
+      );
+
+    res.json({
+      users:
+        data.users.length,
+
+      products:
+        data.products.length,
+
+      orders:
+        data.orders.length,
+
+      pendingOrders:
+        data.orders.filter(
+          x =>
+            x.status ===
+            "pending"
+        ).length,
+
+      approvedOrders:
+        data.orders.filter(
+          x =>
+            x.status ===
+            "approved"
+        ).length,
+
+      deliveredOrders:
+        data.orders.filter(
+          x =>
+            x.status ===
+            "delivered"
+        ).length,
+
+      services:
+        data.services.length,
+
+      tickets:
+        data.tickets.length,
+
+      revenue
+    });
+  }
+);
+
+/* ----------------------------- */
+/* DASHBOARD                     */
+/* ----------------------------- */
+
+app.get(
+  "/api/dashboard",
+  adminAuth,
+  (req, res) => {
+    const data = readDB();
+
+    res.json({
+      users:
+        data.users.length,
+
+      products:
+        data.products.length,
+
+      orders:
+        data.orders.length,
+
+      pendingOrders:
+        data.orders.filter(
+          x =>
+            x.status ===
+            "pending"
+        ).length,
+
+      delivered:
+        data.orders.filter(
+          x =>
+            x.status ===
+            "delivered"
+        ).length,
+
+      services:
+        data.services.length,
+
+      tickets:
+        data.tickets.filter(
+          x =>
+            x.status ===
+            "open"
+        ).length
+    });
+  }
+);
+
+/* ----------------------------- */
+/* FEATURE DATA                  */
+/* ----------------------------- */
+
+app.get(
+  "/api/feature-data",
+  adminAuth,
+  (req, res) => {
+    const data = readDB();
+
+    res.json({
+      flashSale:
+        data.settings.flashSale,
+
+      wheel:
+        data.settings.wheel,
+
+      missions:
+        data.missions,
+
+      referrals:
+        data.referrals,
+
+      wheelPrizes:
+        data.wheelPrizes,
+
+      spins:
+        data.spins
+    });
+  }
+);
+
+/* ----------------------------- */
+/* BACKUP                        */
+/* ----------------------------- */
+
+app.get(
+  "/api/backup",
+  adminAuth,
+  (req, res) => {
+    const data = readDB();
+
+    const filename =
+      `sami-wireguard-backup-${Date.now()}.json`;
+
+    res.setHeader(
+      "Content-Type",
+      "application/json"
+    );
+
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="${filename}"`
+    );
+
+    res.send(
+      JSON.stringify(
+        data,
+        null,
+        2
+      )
+    );
+  }
+);
+
+/* ----------------------------- */
+/* API 404                       */
+/* ----------------------------- */
+
+app.use(
+  "/api",
+  (req, res) => {
+    res.status(404).json({
+      error: "api_not_found"
+    });
+  }
+);
+
+/* ----------------------------- */
+/* STATIC FILES                  */
+/* ----------------------------- */
+
+app.use(
+  express.static(ROOT)
+);
+
+/* ----------------------------- */
+/* ADMIN PAGE                    */
+/* ----------------------------- */
+
+app.get(
+  "/admin",
+  (req, res) => {
+    res.sendFile(
+      path.join(
+        ROOT,
+        "admin.html"
+      )
+    );
+  }
+);
+
+/* ----------------------------- */
+/* FRONTEND                      */
+/* ----------------------------- */
+
+app.get(
+  "/{*splat}",
+  (req, res) => {
+    res.sendFile(
+      path.join(
+        ROOT,
+        "index.html"
+      )
+    );
+  }
+);
+
+/* ----------------------------- */
+/* ERROR HANDLER                 */
+/* ----------------------------- */
+
+app.use(
+  (err, req, res, next) => {
+    console.error(
+      "SERVER ERROR:",
+      err
+    );
+
+    if (
+      err &&
+      err.code ===
+        "LIMIT_FILE_SIZE"
+    ) {
+      return res.status(400).json({
+        error:
+          "file_too_large"
+      });
+    }
+
+    res.status(500).json({
+      error:
+        "internal_server_error"
+    });
+  }
+);
+
+/* ----------------------------- */
+/* START SERVER                  */
+/* ----------------------------- */
+
+app.listen(
+  PORT,
+  () => {
+    console.log(
+      "======================================"
+    );
+
+    console.log(
+      " SAMI // WIREGUARD"
+    );
+
+    console.log(
+      ` Server: http://localhost:${PORT}`
+    );
+
+    console.log(
+      ` Admin:  http://localhost:${PORT}/admin`
+    );
+
+    console.log(
+      "======================================"
+    );
+  }
+);
