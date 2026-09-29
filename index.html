@@ -1,1 +1,809 @@
-<!doctype html><html lang="fa" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#060911"><meta name="description" content="Sami WireGuard premium gaming VPN"><title>Sami WireGuard</title><link rel="manifest" href="/manifest.json"><link rel="stylesheet" href="/style.css"></head><body><header><a class="brand" href="/">⚡ SAMI <b>WIREGUARD</b></a><div class="head-actions"><a id="botLink" target="_blank">🤖 بات</a><a id="channelLink" target="_blank">📢 کانال</a><a id="supportLink" target="_blank">💬 پشتیبانی</a><a href="/admin">⚙️ مدیریت</a></div></header><main><section class="hero"><div class="badge">🚀 PREMIUM GAMING VPN</div><h1>سرعت بالا. پینگ پایدار.<br><span>WireGuard حرفه‌ای.</span></h1><p>خرید آنلاین، ارسال رسید و تحویل دستی لینک اشتراک یا فایل کانفیگ توسط مدیریت.</p></section><section><div class="section-head"><div><small>STORE</small><h2>🛒 محصولات</h2></div><div id="flash" class="flash hidden"></div></div><div id="categories" class="chips"></div><div id="products" class="grid"></div></section><section class="support-card"><div><small>24/7 SUPPORT</small><h2>💬 پشتیبانی تلگرام</h2><p id="support"></p></div><a id="supportBtn" class="primary" target="_blank">ارتباط با پشتیبانی</a></section></main><div id="modal" class="modal hidden"><div class="box"><button class="close" onclick="closeModal()">×</button><div class="badge">🧾 PAYMENT</div><h2>ثبت سفارش</h2><div id="selectedProduct"></div><form id="orderForm"><input type="hidden" id="pid"><input id="name" placeholder="نام و نام خانوادگی" required><input id="contact" placeholder="آیدی تلگرام / شماره تماس" required><div id="pay" class="pay"></div><label class="file">📎 رسید پرداخت<input type="file" id="receipt" accept="image/*,.pdf" required></label><button class="primary full">✅ ارسال رسید برای بررسی</button></form><p id="msg"></p></div></div><script src="/app.js"></script></body></html>
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>SAMI // WIREGUARD</title>
+
+  <meta
+    name="description"
+    content="SAMI WireGuard - Cyberpunk Gaming Network"
+  >
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+  <link
+    href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;600;700;800;900&display=swap"
+    rel="stylesheet"
+  >
+
+  <link rel="stylesheet" href="/style.css">
+</head>
+
+<body>
+
+  <!-- BACKGROUND -->
+  <div class="bg-grid"></div>
+  <div class="bg-glow bg-glow-1"></div>
+  <div class="bg-glow bg-glow-2"></div>
+  <div class="scanlines"></div>
+
+  <!-- TOP HUD -->
+  <header class="site-header">
+
+    <div class="header-inner">
+
+      <a href="/" class="brand">
+        <span class="brand-icon">⚡</span>
+
+        <span>
+          <strong>SAMI</strong>
+          <small>// WIREGUARD</small>
+        </span>
+      </a>
+
+      <nav class="main-nav">
+        <a href="#home">خانه</a>
+        <a href="#store">فروشگاه</a>
+        <a href="#services">سرویس‌ها</a>
+        <a href="#support">پشتیبانی</a>
+      </nav>
+
+      <div class="header-status">
+        <span class="status-dot"></span>
+        <span>SYSTEM ONLINE</span>
+      </div>
+
+      <button
+        class="player-button"
+        onclick="openAuth()"
+      >
+        🎮 PLAYER
+      </button>
+
+    </div>
+
+  </header>
+
+
+  <!-- HERO -->
+  <main>
+
+    <section
+      id="home"
+      class="hero section"
+    >
+
+      <div class="hero-content">
+
+        <div class="hero-badge">
+          <span class="status-dot"></span>
+          SECURE NETWORK // ONLINE
+        </div>
+
+        <h1>
+          ENTER THE
+          <span>CYBER NETWORK</span>
+        </h1>
+
+        <p class="hero-text">
+          اتصال سریع، پایدار و امن با
+          <strong>SAMI // WIREGUARD</strong>
+        </p>
+
+        <div class="hero-stats">
+
+          <div class="hud-stat">
+            <span>NETWORK</span>
+            <strong>ONLINE</strong>
+          </div>
+
+          <div class="hud-stat">
+            <span>LATENCY</span>
+            <strong>LOW PING</strong>
+          </div>
+
+          <div class="hud-stat">
+            <span>SECURITY</span>
+            <strong>ACTIVE</strong>
+          </div>
+
+        </div>
+
+        <div class="hero-actions">
+
+          <a
+            href="#store"
+            class="cyber-button primary"
+          >
+            <span>EXPLORE SERVICES</span>
+            <b>→</b>
+          </a>
+
+          <a
+            href="#services"
+            class="cyber-button secondary"
+          >
+            VIEW NETWORK
+          </a>
+
+        </div>
+
+      </div>
+
+
+      <!-- CYBER CHARACTER PANEL -->
+      <div class="hero-character">
+
+        <div class="character-frame">
+
+          <div class="frame-top">
+            <span>PLAYER SYSTEM</span>
+            <span>01</span>
+          </div>
+
+          <div class="character-placeholder">
+
+            <div class="character-ring"></div>
+
+            <div class="character-core">
+              <span>⚡</span>
+              <small>SAMI</small>
+            </div>
+
+            <div class="hud-line line-1"></div>
+            <div class="hud-line line-2"></div>
+            <div class="hud-line line-3"></div>
+
+            <div class="character-tag tag-1">
+              <span>●</span>
+              ONLINE
+            </div>
+
+            <div class="character-tag tag-2">
+              LOW PING
+            </div>
+
+            <div class="character-tag tag-3">
+              SECURE
+            </div>
+
+          </div>
+
+          <div class="frame-bottom">
+
+            <span>
+              NODE: GLOBAL
+            </span>
+
+            <span>
+              STATUS: READY
+            </span>
+
+          </div>
+
+        </div>
+
+      </div>
+
+    </section>
+
+
+    <!-- SERVICE MODES -->
+    <section
+      id="services"
+      class="section modes-section"
+    >
+
+      <div class="section-heading">
+
+        <div>
+          <span class="eyebrow">
+            SELECT YOUR MODE
+          </span>
+
+          <h2>
+            NETWORK
+            <span>LOADOUT</span>
+          </h2>
+        </div>
+
+        <p>
+          سرویس موردنظر خودت را انتخاب کن
+        </p>
+
+      </div>
+
+
+      <div
+        id="categories"
+        class="mode-grid"
+      >
+
+        <button
+          class="mode-card active"
+          data-category="all"
+          onclick="filterProducts('all', this)"
+        >
+
+          <span class="mode-icon">◈</span>
+
+          <div>
+            <small>MODE 00</small>
+            <h3>ALL SERVICES</h3>
+            <p>نمایش همه سرویس‌ها</p>
+          </div>
+
+          <b>→</b>
+
+        </button>
+
+
+        <button
+          class="mode-card mode-wg"
+          data-category="wg"
+          onclick="filterProducts('wg', this)"
+        >
+
+          <span class="mode-icon">🎯</span>
+
+          <div>
+            <small>TACTICAL MODE</small>
+            <h3>WIREGUARD</h3>
+            <p>LOW PING // SECURE</p>
+          </div>
+
+          <b>→</b>
+
+        </button>
+
+
+        <button
+          class="mode-card mode-dns"
+          data-category="dns"
+          onclick="filterProducts('dns', this)"
+        >
+
+          <span class="mode-icon">⚡</span>
+
+          <div>
+            <small>SPEED MODE</small>
+            <h3>DNS</h3>
+            <p>FAST // STABLE</p>
+          </div>
+
+          <b>→</b>
+
+        </button>
+
+
+        <button
+          class="mode-card mode-v2ray"
+          data-category="v2ray"
+          onclick="filterProducts('v2ray', this)"
+        >
+
+          <span class="mode-icon">◉</span>
+
+          <div>
+            <small>STEALTH MODE</small>
+            <h3>V2RAY</h3>
+            <p>PRIVATE // SECURE</p>
+          </div>
+
+          <b>→</b>
+
+        </button>
+
+      </div>
+
+    </section>
+
+
+    <!-- STORE -->
+    <section
+      id="store"
+      class="section store-section"
+    >
+
+      <div class="section-heading">
+
+        <div>
+
+          <span class="eyebrow">
+            AVAILABLE LOADOUTS
+          </span>
+
+          <h2>
+            SELECT
+            <span>YOUR SERVICE</span>
+          </h2>
+
+        </div>
+
+        <div
+          id="store-status"
+          class="store-status"
+        >
+          <span class="status-dot"></span>
+          STORE ONLINE
+        </div>
+
+      </div>
+
+
+      <div
+        id="products"
+        class="product-grid"
+      >
+
+        <div class="loading-card">
+          <div class="loader"></div>
+          <span>LOADING NETWORK...</span>
+        </div>
+
+      </div>
+
+    </section>
+
+
+    <!-- PLAYER CTA -->
+    <section class="player-cta section">
+
+      <div class="cta-box">
+
+        <div>
+
+          <span class="eyebrow">
+            PLAYER ACCOUNT
+          </span>
+
+          <h2>
+            READY TO
+            <span>CONNECT?</span>
+          </h2>
+
+          <p>
+            برای خرید و مدیریت سرویس‌ها
+            حساب کاربری خودت را بساز.
+          </p>
+
+        </div>
+
+        <button
+          class="cyber-button primary"
+          onclick="openAuth()"
+        >
+          CREATE PLAYER
+          <b>→</b>
+        </button>
+
+      </div>
+
+    </section>
+
+
+    <!-- SUPPORT -->
+    <section
+      id="support"
+      class="section support-section"
+    >
+
+      <div class="support-grid">
+
+        <div>
+
+          <span class="eyebrow">
+            COMMUNICATION
+          </span>
+
+          <h2>
+            NEED
+            <span>SUPPORT?</span>
+          </h2>
+
+          <p>
+            تیم پشتیبانی آماده پاسخگویی
+            به شماست.
+          </p>
+
+        </div>
+
+
+        <div class="support-actions">
+
+          <a
+            id="supportLink"
+            href="#"
+            target="_blank"
+            class="support-card"
+          >
+
+            <span>💬</span>
+
+            <div>
+              <small>TELEGRAM SUPPORT</small>
+              <strong id="supportUsername">
+                @saman_s87
+              </strong>
+            </div>
+
+            <b>↗</b>
+
+          </a>
+
+
+          <a
+            id="botLink"
+            href="#"
+            target="_blank"
+            class="support-card"
+          >
+
+            <span>🤖</span>
+
+            <div>
+              <small>TELEGRAM BOT</small>
+              <strong id="botUsername">
+                @sami91928bot
+              </strong>
+            </div>
+
+            <b>↗</b>
+
+          </a>
+
+
+          <a
+            id="channelLink"
+            href="#"
+            target="_blank"
+            class="support-card"
+          >
+
+            <span>📡</span>
+
+            <div>
+              <small>TELEGRAM CHANNEL</small>
+              <strong id="channelUsername">
+                @SamiWireGuard
+              </strong>
+            </div>
+
+            <b>↗</b>
+
+          </a>
+
+        </div>
+
+      </div>
+
+    </section>
+
+  </main>
+
+
+  <!-- FOOTER -->
+  <footer class="site-footer">
+
+    <div>
+      ⚡ SAMI // WIREGUARD
+    </div>
+
+    <div>
+      CYBER NETWORK SYSTEM © 2026
+    </div>
+
+    <div>
+      <span class="status-dot"></span>
+      ALL SYSTEMS OPERATIONAL
+    </div>
+
+  </footer>
+
+
+  <!-- AUTH MODAL -->
+  <div
+    id="authModal"
+    class="modal hidden"
+  >
+
+    <div
+      class="modal-backdrop"
+      onclick="closeAuth()"
+    ></div>
+
+    <div class="modal-panel auth-panel">
+
+      <button
+        class="modal-close"
+        onclick="closeAuth()"
+      >
+        ×
+      </button>
+
+      <!-- PHONE -->
+      <div
+        id="authPhone"
+        class="auth-step"
+      >
+
+        <div class="modal-icon">
+          📱
+        </div>
+
+        <span class="eyebrow">
+          PLAYER REGISTRATION
+        </span>
+
+        <h2>
+          CREATE
+          <span>ACCOUNT</span>
+        </h2>
+
+        <p>
+          شماره موبایل خود را وارد کنید.
+        </p>
+
+        <label>
+          شماره موبایل
+        </label>
+
+        <input
+          id="phoneInput"
+          class="cyber-input"
+          type="tel"
+          inputmode="tel"
+          placeholder="09123456789"
+          maxlength="13"
+        >
+
+        <button
+          class="cyber-button primary full"
+          onclick="requestOTP()"
+        >
+          SEND VERIFICATION CODE
+          <b>→</b>
+        </button>
+
+        <div
+          id="authPhoneMessage"
+          class="form-message"
+        ></div>
+
+      </div>
+
+
+      <!-- OTP -->
+      <div
+        id="authOtp"
+        class="auth-step hidden"
+      >
+
+        <div class="modal-icon">
+          🔐
+        </div>
+
+        <span class="eyebrow">
+          SECURITY CHECK
+        </span>
+
+        <h2>
+          VERIFY
+          <span>NUMBER</span>
+        </h2>
+
+        <p>
+          کد ارسال‌شده را وارد کنید.
+        </p>
+
+        <input
+          id="otpInput"
+          class="cyber-input otp-input"
+          type="text"
+          inputmode="numeric"
+          maxlength="6"
+          placeholder="••••••"
+        >
+
+        <button
+          class="cyber-button primary full"
+          onclick="verifyOTP()"
+        >
+          VERIFY PLAYER
+          <b>→</b>
+        </button>
+
+        <button
+          class="text-button"
+          onclick="backToPhone()"
+        >
+          تغییر شماره
+        </button>
+
+        <div
+          id="authOtpMessage"
+          class="form-message"
+        ></div>
+
+      </div>
+
+
+      <!-- SUCCESS -->
+      <div
+        id="authSuccess"
+        class="auth-step hidden"
+      >
+
+        <div class="success-icon">
+          ✓
+        </div>
+
+        <span class="eyebrow">
+          PLAYER VERIFIED
+        </span>
+
+        <h2>
+          SYSTEM
+          <span>READY</span>
+        </h2>
+
+        <p>
+          حساب شما با موفقیت فعال شد.
+        </p>
+
+        <div
+          id="playerInfo"
+          class="player-info"
+        ></div>
+
+        <button
+          class="cyber-button primary full"
+          onclick="closeAuth()"
+        >
+          ENTER STORE
+          <b>→</b>
+        </button>
+
+      </div>
+
+    </div>
+
+  </div>
+
+
+  <!-- CHECKOUT MODAL -->
+  <div
+    id="checkoutModal"
+    class="modal hidden"
+  >
+
+    <div
+      class="modal-backdrop"
+      onclick="closeCheckout()"
+    ></div>
+
+    <div class="modal-panel checkout-panel">
+
+      <button
+        class="modal-close"
+        onclick="closeCheckout()"
+      >
+        ×
+      </button>
+
+      <span class="eyebrow">
+        SECURE PURCHASE
+      </span>
+
+      <h2>
+        CHECK
+        <span>OUT</span>
+      </h2>
+
+
+      <div
+        id="selectedProduct"
+        class="selected-product"
+      ></div>
+
+
+      <div class="payment-box">
+
+        <div class="payment-title">
+          💳 PAYMENT NETWORK
+        </div>
+
+        <div class="card-number">
+          <span id="paymentCard">
+            --
+          </span>
+        </div>
+
+        <div class="card-owner">
+          به نام:
+          <strong id="paymentName">
+            --
+          </strong>
+        </div>
+
+      </div>
+
+
+      <form
+        id="orderForm"
+        class="order-form"
+      >
+
+        <input
+          type="hidden"
+          id="productId"
+        >
+
+        <label>
+          شماره موبایل
+        </label>
+
+        <input
+          id="orderPhone"
+          class="cyber-input"
+          type="tel"
+          readonly
+        >
+
+        <label>
+          رسید پرداخت
+        </label>
+
+        <label
+          class="upload-box"
+          for="receipt"
+        >
+
+          <span>📎</span>
+
+          <strong>
+            UPLOAD RECEIPT
+          </strong>
+
+          <small>
+            JPG / PNG / PDF — MAX 8MB
+          </small>
+
+          <input
+            id="receipt"
+            type="file"
+            accept="image/*,.pdf"
+            required
+          >
+
+        </label>
+
+
+        <button
+          type="submit"
+          class="cyber-button primary full"
+        >
+          CONFIRM PURCHASE
+          <b>→</b>
+        </button>
+
+        <div
+          id="orderMessage"
+          class="form-message"
+        ></div>
+
+      </form>
+
+    </div>
+
+  </div>
+
+
+  <!-- APP -->
+  <script src="/app.js"></script>
+
+</body>
+  </html>
