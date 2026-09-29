@@ -1,22 +1,47 @@
 const ADMIN_TOKEN_KEY = "sami_admin_token";
 
-const adminState = {
-  token: localStorage.getItem(ADMIN_TOKEN_KEY) || "",
+const state = {
+  token: localStorage.getItem(ADMIN_TOKEN_KEY),
+
   currentPage: "dashboard",
 
   products: [],
   orders: [],
   customers: [],
   services: [],
+  categories: [],
   tickets: [],
   coupons: [],
   servers: [],
   notifications: [],
-
   settings: {},
-  categories: [],
 
-  currentProduct: null
+  dashboard: null,
+  analytics: null,
+
+  flashSale: null,
+  wheel: null,
+  wheelPrizes: []
+};
+
+const pageTitles = {
+  dashboard: ["داشبورد", "مرکز مدیریت سامی وایرگارد"],
+  categories: ["دسته‌بندی‌ها", "مدیریت دسته‌بندی محصولات"],
+  products: ["محصولات", "مدیریت پلن‌ها و سرویس‌ها"],
+  orders: ["سفارش‌ها", "بررسی پرداخت و تحویل سرویس"],
+  customers: ["مشتریان", "مدیریت کاربران سایت"],
+  services: ["سرویس‌ها", "سرویس‌های فعال مشتریان"],
+  tickets: ["تیکت‌ها", "پشتیبانی مشتریان"],
+  coupons: ["کدهای تخفیف", "مدیریت کوپن‌ها"],
+  "flash-sale": ["فروش ویژه", "مدیریت تخفیف و کمپین فروش"],
+  wheel: ["گردونه شانس", "مدیریت جوایز و شانس کاربران"],
+  servers: ["سرورها", "مدیریت سرورهای سرویس"],
+  telegram: ["تلگرام", "تنظیمات ربات و کانال"],
+  notifications: ["اعلان‌ها", "ارسال و مدیریت اعلان‌ها"],
+  analytics: ["آمار و تحلیل", "گزارش عملکرد فروشگاه"],
+  audit: ["گزارش فعالیت", "سوابق عملیات مدیریتی"],
+  settings: ["تنظیمات", "تنظیمات اصلی فروشگاه"],
+  backup: ["پشتیبان‌گیری", "مدیریت نسخه پشتیبان"]
 };
 
 document.addEventListener("DOMContentLoaded", initAdmin);
@@ -28,7 +53,7 @@ document.addEventListener("DOMContentLoaded", initAdmin);
 async function initAdmin() {
   bindAdminEvents();
 
-  if (!adminState.token) {
+  if (!state.token) {
     showLogin();
     return;
   }
@@ -37,19 +62,14 @@ async function initAdmin() {
     await apiFetch("/api/admin/me");
 
     showAdminApp();
-    await loadInitialData();
-    await navigateAdmin("dashboard");
-  } catch (error) {
-    console.error(error);
 
-    adminLogout(false);
-    showLogin();
+    await loadAllData();
+
+    navigate("dashboard");
+  } catch {
+    logoutAdmin(false);
   }
 }
-
-/* =========================================================
-   EVENTS
-   ========================================================= */
 
 function bindAdminEvents() {
   const loginForm =
@@ -62,67 +82,56 @@ function bindAdminEvents() {
     );
   }
 
-  document
-    .querySelectorAll("[data-page]")
-    .forEach((item) => {
-      item.addEventListener("click", () => {
-        navigateAdmin(
-          item.dataset.page
-        );
-      });
-    });
+  const refreshButton =
+    document.getElementById("refreshButton");
 
-  document
-    .getElementById("refreshButton")
-    ?.addEventListener(
+  if (refreshButton) {
+    refreshButton.addEventListener(
       "click",
       async () => {
-        await loadInitialData();
-        await navigateAdmin(
-          adminState.currentPage
-        );
-
-        showToast("اطلاعات بروزرسانی شد.");
+        await loadAllData();
+        navigate(state.currentPage);
+        showToast("اطلاعات بروزرسانی شد.", "success");
       }
     );
+  }
 
-  document
-    .getElementById("mobileMenuButton")
-    ?.addEventListener(
+  const mobileButton =
+    document.getElementById(
+      "mobileMenuButton"
+    );
+
+  if (mobileButton) {
+    mobileButton.addEventListener(
       "click",
-      () => {
-        document
-          .getElementById("adminMenu")
-          ?.classList.toggle(
-            "mobile-open"
-          );
-      }
+      toggleMobileSidebar
     );
+  }
 
-  document
-    .getElementById("modalClose")
-    ?.addEventListener(
+  const modalClose =
+    document.getElementById("modalClose");
+
+  if (modalClose) {
+    modalClose.addEventListener(
       "click",
       closeAdminModal
     );
+  }
 
-  document
-    .getElementById("adminModal")
-    ?.addEventListener(
-      "click",
-      (event) => {
-        if (
-          event.target.id ===
-          "adminModal"
-        ) {
-          closeAdminModal();
-        }
+  const modal =
+    document.getElementById("adminModal");
+
+  if (modal) {
+    modal.addEventListener("click", (event) => {
+      if (event.target === modal) {
+        closeAdminModal();
       }
-    );
+    });
+  }
 }
 
 /* =========================================================
-   AUTH
+   LOGIN
    ========================================================= */
 
 async function handleAdminLogin(event) {
@@ -131,13 +140,17 @@ async function handleAdminLogin(event) {
   const username =
     document.getElementById(
       "loginUsername"
-    )?.value
-      ?.trim();
+    )?.value.trim();
 
   const password =
     document.getElementById(
       "loginPassword"
-    )?.value || "";
+    )?.value;
+
+  const button =
+    document.getElementById(
+      "loginButton"
+    );
 
   const message =
     document.getElementById(
@@ -145,162 +158,81 @@ async function handleAdminLogin(event) {
     );
 
   if (!username || !password) {
-    setMessage(
-      message,
+    setLoginMessage(
       "نام کاربری و رمز عبور را وارد کنید."
     );
-
     return;
   }
 
-  setMessage(
-    message,
-    "در حال ورود..."
-  );
+  if (button) {
+    button.disabled = true;
+    button.textContent = "در حال ورود...";
+  }
 
   try {
-    /*
-      سرور فعلی /api/login دارد.
-      اینجا عمداً همان endpoint استفاده شده.
-    */
+    const response = await fetch(
+      "/api/login",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          username,
+          password
+        })
+      }
+    );
 
-    const response =
-      await fetch(
-        "/api/login",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type":
-              "application/json"
-          },
-          body: JSON.stringify({
-            username,
-            password
-          })
-        }
-      );
+    const data = await response.json();
 
-    const data =
-      await response.json();
-
-    if (!response.ok) {
+    if (!response.ok || !data.ok) {
       throw new Error(
         data.message ||
-        "ورود ناموفق بود."
+          "ورود ناموفق بود."
       );
     }
 
-    if (!data.token) {
-      throw new Error(
-        "توکن مدیریت دریافت نشد."
-      );
-    }
-
-    adminState.token =
-      data.token;
+    state.token = data.token;
 
     localStorage.setItem(
       ADMIN_TOKEN_KEY,
       data.token
     );
 
-    setMessage(
-      message,
-      "ورود موفق بود."
-    );
-
     showAdminApp();
 
-    await loadInitialData();
+    await loadAllData();
 
-    await navigateAdmin(
-      "dashboard"
+    navigate("dashboard");
+
+    showToast(
+      "با موفقیت وارد پنل مدیریت شدید.",
+      "success"
     );
-
   } catch (error) {
-    console.error(error);
-
-    setMessage(
-      message,
+    setLoginMessage(
       error.message ||
-      "خطا در ورود."
+        "خطا در ورود."
     );
+  } finally {
+    if (button) {
+      button.disabled = false;
+      button.textContent = "ورود به پنل";
+    }
   }
 }
 
-function adminLogout(reload = true) {
-  localStorage.removeItem(
-    ADMIN_TOKEN_KEY
-  );
+function setLoginMessage(message) {
+  const element =
+    document.getElementById(
+      "loginMessage"
+    );
 
-  adminState.token = "";
-
-  if (reload) {
-    location.reload();
+  if (element) {
+    element.textContent = message;
   }
 }
-
-/* =========================================================
-   API
-   ========================================================= */
-
-async function apiFetch(
-  url,
-  options = {}
-) {
-  const headers = {
-    ...(options.headers || {})
-  };
-
-  if (
-    adminState.token &&
-    !headers.Authorization
-  ) {
-    headers.Authorization =
-      `Bearer ${adminState.token}`;
-  }
-
-  const response =
-    await fetch(
-      url,
-      {
-        ...options,
-        headers
-      }
-    );
-
-  let data = {};
-
-  try {
-    data =
-      await response.json();
-  } catch {
-    data = {};
-  }
-
-  if (response.status === 401) {
-    adminLogout(false);
-    showLogin();
-
-    throw new Error(
-      "نشست مدیریت منقضی شده است."
-    );
-  }
-
-  if (!response.ok) {
-    throw new Error(
-      data.message ||
-      data.error ||
-      "خطا در درخواست."
-    );
-  }
-
-  return data;
-}
-
-/* =========================================================
-   SCREENS
-   ========================================================= */
 
 function showLogin() {
   const login =
@@ -342,274 +274,114 @@ function showAdminApp() {
   }
 }
 
-/* =========================================================
-   INITIAL DATA
-   ========================================================= */
+function logoutAdmin(showMessage = true) {
+  state.token = null;
 
-async function loadInitialData() {
-  const results =
-    await Promise.allSettled([
-      loadProducts(),
-      loadOrders(),
-      loadCustomers(),
-      loadServices(),
-      loadSettings(),
-      loadCategories(),
-      loadTickets(),
-      loadCoupons(),
-      loadServers(),
-      loadNotifications()
-    ]);
-
-  results.forEach((result) => {
-    if (
-      result.status === "rejected"
-    ) {
-      console.warn(
-        "Admin data load warning:",
-        result.reason
-      );
-    }
-  });
-}
-
-/* =========================================================
-   NAVIGATION
-   ========================================================= */
-
-async function navigateAdmin(page) {
-  adminState.currentPage =
-    page || "dashboard";
-
-  updateActiveMenu(
-    adminState.currentPage
+  localStorage.removeItem(
+    ADMIN_TOKEN_KEY
   );
 
-  const content =
-    document.getElementById(
-      "content"
+  if (showMessage) {
+    showLogin();
+    setLoginMessage(
+      "از پنل خارج شدید."
     );
-
-  const title =
-    document.getElementById(
-      "pageTitle"
-    );
-
-  const kicker =
-    document.getElementById(
-      "pageKicker"
-    );
-
-  const pageInfo =
-    getPageInfo(
-      adminState.currentPage
-    );
-
-  if (title) {
-    title.textContent =
-      pageInfo.title;
-  }
-
-  if (kicker) {
-    kicker.textContent =
-      pageInfo.kicker;
-  }
-
-  if (!content) return;
-
-  content.innerHTML =
-    adminLoadingHTML();
-
-  try {
-    switch (
-      adminState.currentPage
-    ) {
-      case "dashboard":
-        await renderDashboard(content);
-        break;
-
-      case "categories":
-        await renderCategoriesPage(content);
-        break;
-
-      case "products":
-        await renderProductsPage(content);
-        break;
-
-      case "orders":
-        await renderOrdersPage(content);
-        break;
-
-      case "customers":
-        await renderCustomersPage(content);
-        break;
-
-      case "services":
-        await renderServicesPage(content);
-        break;
-
-      case "tickets":
-        await renderTicketsPage(content);
-        break;
-
-      case "coupons":
-        await renderCouponsPage(content);
-        break;
-
-      case "servers":
-        await renderServersPage(content);
-        break;
-
-      case "telegram":
-        await renderTelegramPage(content);
-        break;
-
-      case "notifications":
-        await renderNotificationsPage(content);
-        break;
-
-      case "analytics":
-        await renderAnalyticsPage(content);
-        break;
-
-      case "audit":
-        await renderAuditPage(content);
-        break;
-
-      case "backup":
-        await renderBackupPage(content);
-        break;
-
-      case "settings":
-        await renderSettingsPage(content);
-        break;
-
-      default:
-        await renderDashboard(content);
-    }
-
-    closeMobileMenu();
-
-  } catch (error) {
-    console.error(error);
-
-    content.innerHTML =
-      emptyStateHTML(
-        "خطا",
-        error.message ||
-        "خطایی رخ داد."
-      );
+  } else {
+    showLogin();
   }
 }
 
-function getPageInfo(page) {
-  const pages = {
-    dashboard: {
-      kicker: "CONTROL CENTER",
-      title: "داشبورد"
-    },
+/* =========================================================
+   API
+   ========================================================= */
 
-    categories: {
-      kicker: "STORE",
-      title: "دسته‌بندی‌ها"
-    },
-
-    products: {
-      kicker: "STORE",
-      title: "محصولات"
-    },
-
-    orders: {
-      kicker: "SALES",
-      title: "سفارش‌ها"
-    },
-
-    customers: {
-      kicker: "USERS",
-      title: "مشتریان"
-    },
-
-    services: {
-      kicker: "SERVICES",
-      title: "سرویس‌ها"
-    },
-
-    tickets: {
-      kicker: "SUPPORT",
-      title: "تیکت‌ها"
-    },
-
-    coupons: {
-      kicker: "MARKETING",
-      title: "کدهای تخفیف"
-    },
-
-    servers: {
-      kicker: "INFRASTRUCTURE",
-      title: "سرورها"
-    },
-
-    telegram: {
-      kicker: "TELEGRAM",
-      title: "تلگرام"
-    },
-
-    notifications: {
-      kicker: "SYSTEM",
-      title: "اعلان‌ها"
-    },
-
-    analytics: {
-      kicker: "ANALYTICS",
-      title: "آمار"
-    },
-
-    audit: {
-      kicker: "SECURITY",
-      title: "گزارش فعالیت"
-    },
-
-    backup: {
-      kicker: "DATABASE",
-      title: "پشتیبان‌گیری"
-    },
-
-    settings: {
-      kicker: "CONFIGURATION",
-      title: "تنظیمات"
-    }
+async function apiFetch(
+  url,
+  options = {}
+) {
+  const headers = {
+    ...(options.headers || {})
   };
 
-  return (
-    pages[page] ||
-    pages.dashboard
+  if (
+    options.body &&
+    !(options.body instanceof FormData)
+  ) {
+    headers["Content-Type"] =
+      "application/json";
+  }
+
+  if (state.token) {
+    headers.Authorization =
+      `Bearer ${state.token}`;
+  }
+
+  const response = await fetch(
+    url,
+    {
+      ...options,
+      headers
+    }
   );
-}
 
-function updateActiveMenu(page) {
-  document
-    .querySelectorAll(
-      "[data-page]"
-    )
-    .forEach((item) => {
-      item.classList.toggle(
-        "active",
-        item.dataset.page === page
-      );
-    });
-}
+  let data = {};
 
-function closeMobileMenu() {
-  document
-    .getElementById("adminMenu")
-    ?.classList.remove(
-      "mobile-open"
+  try {
+    data = await response.json();
+  } catch {
+    data = {};
+  }
+
+  if (response.status === 401) {
+    logoutAdmin(false);
+
+    throw new Error(
+      "نشست مدیریت منقضی شده است."
     );
+  }
+
+  if (!response.ok || data.ok === false) {
+    throw new Error(
+      data.message ||
+        "خطا در ارتباط با سرور."
+    );
+  }
+
+  return data;
 }
 
 /* =========================================================
-   PRODUCTS
+   LOAD DATA
    ========================================================= */
+
+async function loadAllData() {
+  const requests = await Promise.allSettled([
+    loadProducts(),
+    loadOrders(),
+    loadCustomers(),
+    loadServices(),
+    loadCategories(),
+    loadTickets(),
+    loadCoupons(),
+    loadServers(),
+    loadNotifications(),
+    loadSettings(),
+    loadDashboard(),
+    loadFeatures()
+  ]);
+
+  const failed = requests.filter(
+    (item) =>
+      item.status === "rejected"
+  );
+
+  if (failed.length) {
+    console.warn(
+      "Some admin data failed to load:",
+      failed
+    );
+  }
+}
 
 async function loadProducts() {
   const data =
@@ -617,159 +389,584 @@ async function loadProducts() {
       "/api/products"
     );
 
-  adminState.products =
-    Array.isArray(data.products)
-      ? data.products
-      : Array.isArray(data)
-        ? data
-        : [];
+  state.products =
+    data.products || [];
 }
 
-async function renderProductsPage(
-  content
-) {
-  await loadProducts();
+async function loadOrders() {
+  const data =
+    await apiFetch(
+      "/api/orders"
+    );
+
+  state.orders =
+    data.orders || [];
+}
+
+async function loadCustomers() {
+  const data =
+    await apiFetch(
+      "/api/customers"
+    );
+
+  state.customers =
+    data.customers || [];
+}
+
+async function loadServices() {
+  const data =
+    await apiFetch(
+      "/api/services"
+    );
+
+  state.services =
+    data.services || [];
+}
+
+async function loadCategories() {
+  const data =
+    await apiFetch(
+      "/api/categories"
+    );
+
+  state.categories =
+    data.categories || [];
+}
+
+async function loadTickets() {
+  const data =
+    await apiFetch(
+      "/api/tickets"
+    );
+
+  state.tickets =
+    data.tickets || [];
+}
+
+async function loadCoupons() {
+  const data =
+    await apiFetch(
+      "/api/coupons"
+    );
+
+  state.coupons =
+    data.coupons || [];
+}
+
+async function loadServers() {
+  const data =
+    await apiFetch(
+      "/api/servers"
+    );
+
+  state.servers =
+    data.servers || [];
+}
+
+async function loadNotifications() {
+  const data =
+    await apiFetch(
+      "/api/notifications"
+    );
+
+  state.notifications =
+    data.notifications || [];
+}
+
+async function loadSettings() {
+  const data =
+    await apiFetch(
+      "/api/settings"
+    );
+
+  state.settings =
+    data.settings || {};
+}
+
+async function loadDashboard() {
+  const data =
+    await apiFetch(
+      "/api/dashboard"
+    );
+
+  state.dashboard = data;
+}
+
+async function loadFeatures() {
+  try {
+    const data =
+      await apiFetch(
+        "/api/features"
+      );
+
+    state.flashSale =
+      data.flashSale || null;
+
+    state.wheel =
+      data.wheel || null;
+
+    state.wheelPrizes =
+      data.wheelPrizes || [];
+  } catch {
+    state.flashSale = null;
+    state.wheel = null;
+    state.wheelPrizes = [];
+  }
+}
+
+/* =========================================================
+   NAVIGATION
+   ========================================================= */
+
+function navigate(page) {
+  if (!pageTitles[page]) {
+    page = "dashboard";
+  }
+
+  state.currentPage = page;
+
+  updatePageHeader(page);
+
+  document
+    .querySelectorAll(
+      ".admin-menu-item"
+    )
+    .forEach((item) => {
+      item.classList.toggle(
+        "active",
+        item.dataset.page === page
+      );
+    });
+
+  closeMobileSidebar();
+
+  const content =
+    document.getElementById(
+      "content"
+    );
+
+  if (!content) return;
+
+  content.innerHTML =
+    `<div class="admin-loading">در حال بارگذاری...</div>`;
+
+  switch (page) {
+    case "dashboard":
+      renderDashboard();
+      break;
+
+    case "categories":
+      renderCategoriesPage();
+      break;
+
+    case "products":
+      renderProductsPage();
+      break;
+
+    case "orders":
+      renderOrdersPage();
+      break;
+
+    case "customers":
+      renderCustomersPage();
+      break;
+
+    case "services":
+      renderServicesPage();
+      break;
+
+    case "tickets":
+      renderTicketsPage();
+      break;
+
+    case "coupons":
+      renderCouponsPage();
+      break;
+
+    case "flash-sale":
+      renderFlashSalePage();
+      break;
+
+    case "wheel":
+      renderWheelPage();
+      break;
+
+    case "servers":
+      renderServersPage();
+      break;
+
+    case "telegram":
+      renderTelegramPage();
+      break;
+
+    case "notifications":
+      renderNotificationsPage();
+      break;
+
+    case "analytics":
+      renderAnalyticsPage();
+      break;
+
+    case "audit":
+      renderAuditPage();
+      break;
+
+    case "settings":
+      renderSettingsPage();
+      break;
+
+    case "backup":
+      renderBackupPage();
+      break;
+
+    default:
+      renderDashboard();
+  }
+}
+
+function updatePageHeader(page) {
+  const data =
+    pageTitles[page];
+
+  const kicker =
+    document.getElementById(
+      "pageKicker"
+    );
+
+  const title =
+    document.getElementById(
+      "pageTitle"
+    );
+
+  if (kicker) {
+    kicker.textContent =
+      "SAMI WIREGUARD";
+  }
+
+  if (title) {
+    title.textContent =
+      data?.[0] || "پنل مدیریت";
+  }
+}
+
+/* =========================================================
+   DASHBOARD
+   ========================================================= */
+
+function renderDashboard() {
+  const content =
+    document.getElementById(
+      "content"
+    );
+
+  const stats =
+    state.dashboard?.stats || {};
+
+  const recentOrders =
+    state.dashboard?.recentOrders || [];
 
   content.innerHTML = `
     <div class="admin-page-head">
       <div>
-        <h2>مدیریت پلن‌ها</h2>
+        <h2>نمای کلی فروشگاه</h2>
         <p>
-          پلن‌هایی که اینجا اضافه می‌کنی
-          مستقیماً در فروشگاه نمایش داده می‌شوند.
+          وضعیت سفارش‌ها، مشتری‌ها و سرویس‌های سامی وایرگارد
         </p>
       </div>
 
-      <button
-        class="admin-primary-button"
-        onclick="openProductModal()"
-      >
-        + افزودن پلن
-      </button>
+      <div>
+        <button
+          class="admin-primary-button"
+          onclick="navigate('products')"
+        >
+          + محصول جدید
+        </button>
+      </div>
+    </div>
+
+    <div class="admin-stats-grid">
+      ${statCard(
+        "مشتریان",
+        formatNumber(stats.users || 0)
+      )}
+
+      ${statCard(
+        "محصولات",
+        formatNumber(
+          stats.activeProducts ??
+          stats.products ??
+          0
+        )
+      )}
+
+      ${statCard(
+        "سفارش‌ها",
+        formatNumber(stats.orders || 0)
+      )}
+
+      ${statCard(
+        "در انتظار بررسی",
+        formatNumber(
+          stats.pendingOrders || 0
+        )
+      )}
+    </div>
+
+    <div class="admin-dashboard-grid">
+      <div class="admin-panel-card">
+        <div class="admin-panel-card-head">
+          <div>
+            <h3>آخرین سفارش‌ها</h3>
+            <span>
+              جدیدترین تراکنش‌های فروشگاه
+            </span>
+          </div>
+
+          <button
+            class="admin-small-button"
+            onclick="navigate('orders')"
+          >
+            مشاهده همه
+          </button>
+        </div>
+
+        ${
+          recentOrders.length
+            ? `
+              <div class="admin-table-wrap">
+                <table class="admin-table">
+                  <thead>
+                    <tr>
+                      <th>سفارش</th>
+                      <th>مشتری</th>
+                      <th>مبلغ</th>
+                      <th>وضعیت</th>
+                    </tr>
+                  </thead>
+
+                  <tbody>
+                    ${recentOrders
+                      .map(
+                        renderDashboardOrder
+                      )
+                      .join("")}
+                  </tbody>
+                </table>
+              </div>
+            `
+            : emptyState(
+                "هنوز سفارشی ثبت نشده است."
+              )
+        }
+      </div>
+
+      <div class="admin-panel-card">
+        <div class="admin-panel-card-head">
+          <div>
+            <h3>دسترسی سریع</h3>
+            <span>
+              عملیات پرکاربرد
+            </span>
+          </div>
+        </div>
+
+        <div class="admin-quick-actions">
+          <button onclick="navigate('products')">
+            مدیریت محصولات
+          </button>
+
+          <button onclick="navigate('orders')">
+            بررسی سفارش‌ها
+          </button>
+
+          <button onclick="navigate('customers')">
+            مشتریان
+          </button>
+
+          <button onclick="navigate('tickets')">
+            تیکت‌های پشتیبانی
+          </button>
+
+          <button onclick="navigate('flash-sale')">
+            فروش ویژه
+          </button>
+
+          <button onclick="navigate('wheel')">
+            گردونه شانس
+          </button>
+
+          <button onclick="navigate('telegram')">
+            تنظیمات تلگرام
+          </button>
+
+          <button onclick="navigate('settings')">
+            تنظیمات سایت
+          </button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderDashboardOrder(order) {
+  return `
+    <tr>
+      <td>
+        <strong>
+          #${escapeHtml(
+            shortId(order.id)
+          )}
+        </strong>
+      </td>
+
+      <td>
+        ${
+          escapeHtml(
+            order.customerName ||
+              order.phone ||
+              "مشتری"
+          )
+        }
+      </td>
+
+      <td>
+        ${formatPrice(
+          order.amount ??
+            order.price ??
+            0
+        )}
+      </td>
+
+      <td>
+        ${statusBadge(
+          order.status
+        )}
+      </td>
+    </tr>
+  `;
+}
+
+function statCard(label, value) {
+  return `
+    <div class="admin-stat-card">
+      <span class="admin-card-label">
+        ${label}
+      </span>
+
+      <strong>
+        ${value}
+      </strong>
+    </div>
+  `;
+}
+
+/* =========================================================
+   CATEGORIES
+   ========================================================= */
+
+function renderCategoriesPage() {
+  const content =
+    document.getElementById(
+      "content"
+    );
+
+  content.innerHTML = `
+    <div class="admin-page-head">
+      <div>
+        <h2>دسته‌بندی محصولات</h2>
+        <p>
+          ترتیب و وضعیت دسته‌بندی‌ها را کنترل کنید.
+        </p>
+      </div>
+
+      <div>
+        <button
+          class="admin-primary-button"
+          onclick="openCategoryModal()"
+        >
+          + دسته جدید
+        </button>
+      </div>
     </div>
 
     <div class="admin-table-wrap">
-
       <table class="admin-table">
-
         <thead>
           <tr>
-            <th>محصول</th>
-            <th>دسته</th>
-            <th>قیمت</th>
-            <th>مدت</th>
-            <th>حجم</th>
-            <th>موجودی</th>
+            <th>نام</th>
+            <th>Slug</th>
+            <th>ترتیب</th>
             <th>وضعیت</th>
             <th>عملیات</th>
           </tr>
         </thead>
 
         <tbody>
-
           ${
-            adminState.products.length
-              ? adminState.products
+            state.categories.length
+              ? state.categories
                   .map(
-                    renderProductRow
+                    renderCategoryRow
                   )
                   .join("")
               : `
                 <tr>
                   <td
-                    colspan="8"
+                    colspan="5"
                     class="admin-empty-cell"
                   >
-                    هنوز محصولی ثبت نشده است.
+                    دسته‌بندی‌ای ثبت نشده است.
                   </td>
                 </tr>
               `
           }
-
         </tbody>
-
       </table>
-
     </div>
   `;
 }
 
-function renderProductRow(product) {
+function renderCategoryRow(category) {
   return `
     <tr>
-
       <td>
         <strong>
           ${escapeHtml(
-            product.name ||
-            "-"
+            category.name
           )}
         </strong>
       </td>
 
       <td>
         ${escapeHtml(
-          categoryLabel(
-            product.category
-          )
+          category.slug || "-"
         )}
       </td>
 
       <td>
-        ${formatPrice(
-          product.price
-        )}
-        تومان
-      </td>
-
-      <td>
-        ${escapeHtml(
-          formatDuration(
-            product.duration
-          )
+        ${formatNumber(
+          category.sort || 0
         )}
       </td>
 
       <td>
-        ${escapeHtml(
-          String(
-            product.volume ||
-            "نامحدود"
-          )
-        )}
+        ${
+          category.active !== false
+            ? statusBadge(
+                "active"
+              )
+            : statusBadge(
+                "inactive"
+              )
+        }
       </td>
 
       <td>
-        ${escapeHtml(
-          String(
-            product.stock ??
-            "-"
-          )
-        )}
-      </td>
-
-      <td>
-        <span class="admin-status ${
-          product.active === false
-            ? "danger"
-            : "success"
-        }">
-          ${
-            product.active === false
-              ? "غیرفعال"
-              : "فعال"
-          }
-        </span>
-      </td>
-
-      <td>
-
         <div class="admin-actions">
-
           <button
             class="admin-small-button"
-            onclick="editProduct('${escapeJs(
-              product.id
+            onclick="openCategoryModal('${escapeAttr(
+              category.id
             )}')"
           >
             ویرایش
@@ -777,239 +974,85 @@ function renderProductRow(product) {
 
           <button
             class="admin-small-button danger"
-            onclick="deleteProduct('${escapeJs(
-              product.id
+            onclick="deleteCategory('${escapeAttr(
+              category.id
             )}')"
           >
             حذف
           </button>
-
         </div>
-
       </td>
-
     </tr>
   `;
 }
 
-function openProductModal(
-  product = null
-) {
-  adminState.currentProduct =
-    product;
-
-  const title =
-    product
-      ? "ویرایش پلن"
-      : "افزودن پلن";
-
-  const categories =
-    adminState.categories.length
-      ? adminState.categories
-      : [
-          {
-            id: "wg",
-            name: "WireGuard"
-          },
-          {
-            id: "dns",
-            name: "DNS"
-          },
-          {
-            id: "v2ray",
-            name: "V2Ray"
-          }
-        ];
+function openCategoryModal(id = "") {
+  const category =
+    state.categories.find(
+      (item) => item.id === id
+    );
 
   openAdminModal(
-    title,
+    category
+      ? "ویرایش دسته‌بندی"
+      : "دسته‌بندی جدید",
     `
       <form
-        id="productForm"
         class="admin-form"
+        onsubmit="saveCategory(event, '${escapeAttr(
+          id
+        )}')"
       >
-
         <div class="admin-form-grid">
-
           <label>
-            نام پلن
+            نام دسته
             <input
               name="name"
               required
-              value="${escapeHtml(
-                product?.name || ""
+              value="${escapeAttr(
+                category?.name || ""
               )}"
-              placeholder="مثلاً WireGuard 20GB"
+              placeholder="مثلاً WireGuard"
             />
           </label>
 
           <label>
-            دسته‌بندی
-
-            <select name="category">
-
-              ${categories
-                .map(
-                  (category) => `
-                    <option
-                      value="${escapeHtml(
-                        category.id
-                      )}"
-                      ${
-                        String(
-                          product?.category ||
-                          "wg"
-                        ) ===
-                        String(
-                          category.id
-                        )
-                          ? "selected"
-                          : ""
-                      }
-                    >
-                      ${escapeHtml(
-                        category.name ||
-                        category.id
-                      )}
-                    </option>
-                  `
-                )
-                .join("")}
-
-            </select>
-
+            Slug
+            <input
+              name="slug"
+              value="${escapeAttr(
+                category?.slug || ""
+              )}"
+              placeholder="wireguard"
+            />
           </label>
 
           <label>
-            قیمت
+            ترتیب
             <input
-              name="price"
+              name="sort"
               type="number"
-              min="0"
-              required
-              value="${product?.price ?? ""}"
-            />
-          </label>
-
-          <label>
-            مدت
-            <input
-              name="duration"
-              value="${escapeHtml(
-                product?.duration || ""
+              value="${escapeAttr(
+                category?.sort || 1
               )}"
-              placeholder="30 روز"
             />
           </label>
 
-          <label>
-            حجم
+          <label class="admin-checkbox">
             <input
-              name="volume"
-              value="${escapeHtml(
-                product?.volume || ""
-              )}"
-              placeholder="20GB"
+              name="active"
+              type="checkbox"
+              ${
+                category?.active !== false
+                  ? "checked"
+                  : ""
+              }
             />
+            فعال باشد
           </label>
-
-          <label>
-            سرور
-            <input
-              name="server"
-              value="${escapeHtml(
-                product?.server || ""
-              )}"
-              placeholder="Germany 01"
-            />
-          </label>
-
-          <label>
-            پینگ
-            <input
-              name="ping"
-              value="${escapeHtml(
-                product?.ping || ""
-              )}"
-              placeholder="30ms"
-            />
-          </label>
-
-          <label>
-            موجودی
-            <input
-              name="stock"
-              type="number"
-              min="0"
-              value="${
-                product?.stock ??
-                0
-              }"
-            />
-          </label>
-
-          <label>
-            Badge
-            <select name="rarity">
-
-              ${[
-                "COMMON",
-                "RARE",
-                "EPIC",
-                "LEGENDARY"
-              ]
-                .map(
-                  (rarity) => `
-                    <option
-                      value="${rarity}"
-                      ${
-                        (
-                          product?.rarity ||
-                          "RARE"
-                        ) === rarity
-                          ? "selected"
-                          : ""
-                      }
-                    >
-                      ${rarity}
-                    </option>
-                  `
-                )
-                .join("")}
-
-            </select>
-          </label>
-
         </div>
 
-        <label class="admin-checkbox">
-          <input
-            type="checkbox"
-            name="active"
-            ${
-              product?.active !== false
-                ? "checked"
-                : ""
-            }
-          />
-          محصول فعال باشد
-        </label>
-
-        <label class="admin-checkbox">
-          <input
-            type="checkbox"
-            name="featured"
-            ${
-              product?.featured
-                ? "checked"
-                : ""
-            }
-          />
-          پیشنهاد ویژه باشد
-        </label>
-
         <div class="admin-form-actions">
-
           <button
             type="button"
             class="admin-secondary-button"
@@ -1024,97 +1067,17 @@ function openProductModal(
           >
             ذخیره
           </button>
-
         </div>
-
       </form>
     `
   );
-
-  document
-    .getElementById(
-      "productForm"
-    )
-    ?.addEventListener(
-      "submit",
-      saveProduct
-    );
 }
 
-async function saveProduct(event) {
+async function saveCategory(event, id) {
   event.preventDefault();
 
-  const form =
-    event.currentTarget;
-
+  const form = event.target;
   const formData =
     new FormData(form);
 
-  const payload = {
-    name:
-      formData.get("name"),
-
-    category:
-      formData.get("category"),
-
-    rarity:
-      formData.get("rarity"),
-
-    price:
-      Number(
-        formData.get("price") || 0
-      ),
-
-    duration:
-      formData.get("duration"),
-
-    volume:
-      formData.get("volume"),
-
-    server:
-      formData.get("server"),
-
-    ping:
-      formData.get("ping"),
-
-    stock:
-      Number(
-        formData.get("stock") || 0
-      ),
-
-    active:
-      formData.get("active") ===
-      "on",
-
-    featured:
-      formData.get("featured") ===
-      "on"
-  };
-
-  try {
-    if (
-      adminState.currentProduct
-    ) {
-      await apiFetch(
-        `/api/products/${encodeURIComponent(
-          adminState.currentProduct.id
-        )}`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type":
-              "application/json"
-          },
-          body:
-            JSON.stringify(
-              payload
-            )
-        }
-      );
-
-      showToast(
-        "پلن ویرایش شد."
-      );
-
-    } else {
-      await apiF
+  const category = {
