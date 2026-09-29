@@ -1,108 +1,498 @@
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Sami WireGuard - پنل مدیریت</title>
-  <link rel="stylesheet" href="/admin.css">
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <meta
+        name="theme-color"
+        content="#030506"
+    >
+
+    <title>SAMI // ADMIN CONTROL</title>
+
+    <link
+        rel="preconnect"
+        href="https://fonts.googleapis.com"
+    >
+
+    <link
+        rel="preconnect"
+        href="https://fonts.gstatic.com"
+        crossorigin
+    >
+
+    <link
+        href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;600;700;800;900&display=swap"
+        rel="stylesheet"
+    >
+
+    <link
+        rel="stylesheet"
+        href="/admin.css"
+    >
 </head>
 
 <body>
 
-  <div id="login" class="login">
-    <div class="login-card">
+<!-- =====================================================
+     ADMIN LOGIN
+===================================================== -->
 
-      <div class="logo">
-        ⚡ SAMI <b>WIREGUARD</b>
-      </div>
+<div id="loginScreen" class="admin-login-screen">
 
-      <h1>پنل مدیریت حرفه‌ای</h1>
+    <div class="login-grid"></div>
 
-      <p>مدیریت فروش، سفارش‌ها، تلگرام و تنظیمات</p>
+    <div class="login-panel">
 
-      <input
-        id="u"
-        type="text"
-        placeholder="نام کاربری"
-        value="admin"
-        autocomplete="username"
-      >
+        <div class="login-logo">
+            <div class="login-logo-icon">
+                ⚡
+            </div>
 
-      <input
-        id="p"
-        type="password"
-        placeholder="رمز عبور"
-        autocomplete="current-password"
-        onkeydown="if(event.key==='Enter') login()"
-      >
+            <div>
+                <div class="login-brand">
+                    SAMI // WIREGUARD
+                </div>
 
-      <button
-        class="primary"
-        type="button"
-        onclick="login()"
-      >
-        🔐 ورود مدیریت
-      </button>
+                <div class="login-system">
+                    ADMIN CONTROL SYSTEM
+                </div>
+            </div>
+        </div>
 
-      <div id="le" class="error"></div>
+        <div class="login-status">
+            <span class="status-dot"></span>
+            SECURE ADMIN CHANNEL
+        </div>
+
+        <div class="login-heading">
+            <span>ACCESS</span>
+            CONTROL PANEL
+        </div>
+
+        <p class="login-description">
+            برای ورود به پنل مدیریت، اطلاعات دسترسی مدیر سیستم را وارد کنید.
+        </p>
+
+        <form id="loginForm" class="admin-form">
+
+            <div class="form-group">
+
+                <label>
+                    USERNAME
+                </label>
+
+                <input
+                    id="loginUsername"
+                    type="text"
+                    autocomplete="username"
+                    placeholder="admin"
+                    required
+                >
+
+            </div>
+
+            <div class="form-group">
+
+                <label>
+                    PASSWORD
+                </label>
+
+                <input
+                    id="loginPassword"
+                    type="password"
+                    autocomplete="current-password"
+                    placeholder="••••••••••"
+                    required
+                >
+
+            </div>
+
+            <button
+                id="loginButton"
+                type="submit"
+                class="cyber-button primary full"
+            >
+                AUTHENTICATE
+            </button>
+
+            <div
+                id="loginMessage"
+                class="admin-message"
+            ></div>
+
+        </form>
+
+        <div class="login-footer">
+            SAMI NETWORK // PRIVATE ADMIN ACCESS
+        </div>
 
     </div>
-  </div>
+
+</div>
 
 
-  <div id="app" class="hidden">
+<!-- =====================================================
+     ADMIN APPLICATION
+===================================================== -->
 
-    <aside>
+<div
+    id="adminApp"
+    class="admin-app"
+    hidden
+>
 
-      <div class="side-brand">
-        ⚡ <b>SAMI</b>
-        <span>WIREGUARD</span>
-      </div>
+    <!-- =================================================
+         SIDEBAR
+    ================================================== -->
 
-      <div id="who" class="who"></div>
+    <aside class="admin-sidebar">
 
-      <nav id="nav"></nav>
+        <div class="sidebar-brand">
 
-      <button
-        class="logout"
-        type="button"
-        onclick="logout()"
-      >
-        🚪 خروج
-      </button>
+            <div class="sidebar-logo">
+                ⚡
+            </div>
+
+            <div>
+                <div class="sidebar-title">
+                    SAMI // WIREGUARD
+                </div>
+
+                <div class="sidebar-subtitle">
+                    ADMIN COMMAND
+                </div>
+            </div>
+
+        </div>
+
+
+        <div class="sidebar-status">
+
+            <span class="status-dot"></span>
+
+            <span>
+                SYSTEM ONLINE
+            </span>
+
+        </div>
+
+
+        <nav
+            id="adminMenu"
+            class="admin-menu"
+        >
+
+            <button
+                type="button"
+                class="menu-item active"
+                data-view="dashboard"
+            >
+                <span class="menu-icon">⌂</span>
+                <span>داشبورد</span>
+            </button>
+
+            <button
+                type="button"
+                class="menu-item"
+                data-view="categories"
+            >
+                <span class="menu-icon">◫</span>
+                <span>دسته‌بندی‌ها</span>
+            </button>
+
+            <button
+                type="button"
+                class="menu-item"
+                data-view="products"
+            >
+                <span class="menu-icon">◈</span>
+                <span>محصولات</span>
+            </button>
+
+            <button
+                type="button"
+                class="menu-item"
+                data-view="orders"
+            >
+                <span class="menu-icon">⌁</span>
+                <span>سفارش‌ها</span>
+            </button>
+
+            <button
+                type="button"
+                class="menu-item"
+                data-view="customers"
+            >
+                <span class="menu-icon">◎</span>
+                <span>مشتریان</span>
+            </button>
+
+            <button
+                type="button"
+                class="menu-item"
+                data-view="services"
+            >
+                <span class="menu-icon">◉</span>
+                <span>سرویس‌ها</span>
+            </button>
+
+            <button
+                type="button"
+                class="menu-item"
+                data-view="tickets"
+            >
+                <span class="menu-icon">✉</span>
+                <span>تیکت‌ها</span>
+            </button>
+
+            <button
+                type="button"
+                class="menu-item"
+                data-view="coupons"
+            >
+                <span class="menu-icon">%</span>
+                <span>کوپن‌ها</span>
+            </button>
+
+            <div class="menu-divider"></div>
+
+            <button
+                type="button"
+                class="menu-item"
+                data-view="servers"
+            >
+                <span class="menu-icon">⌘</span>
+                <span>سرورها</span>
+            </button>
+
+            <button
+                type="button"
+                class="menu-item"
+                data-view="telegram"
+            >
+                <span class="menu-icon">➤</span>
+                <span>تلگرام</span>
+            </button>
+
+            <button
+                type="button"
+                class="menu-item"
+                data-view="notifications"
+            >
+                <span class="menu-icon">◌</span>
+                <span>اعلان‌ها</span>
+            </button>
+
+            <button
+                type="button"
+                class="menu-item"
+                data-view="analytics"
+            >
+                <span class="menu-icon">▥</span>
+                <span>آنالیتیکس</span>
+            </button>
+
+            <button
+                type="button"
+                class="menu-item"
+                data-view="audit"
+            >
+                <span class="menu-icon">▤</span>
+                <span>گزارش فعالیت</span>
+            </button>
+
+            <button
+                type="button"
+                class="menu-item"
+                data-view="backup"
+            >
+                <span class="menu-icon">⬡</span>
+                <span>پشتیبان‌گیری</span>
+            </button>
+
+            <div class="menu-divider"></div>
+
+            <button
+                type="button"
+                class="menu-item"
+                data-view="settings"
+            >
+                <span class="menu-icon">⚙</span>
+                <span>تنظیمات</span>
+            </button>
+
+        </nav>
+
+
+        <div class="sidebar-bottom">
+
+            <div class="admin-identity">
+
+                <div class="admin-avatar">
+                    A
+                </div>
+
+                <div class="admin-identity-info">
+
+                    <strong>
+                        ADMIN
+                    </strong>
+
+                    <span>
+                        ROOT ACCESS
+                    </span>
+
+                </div>
+
+            </div>
+
+            <button
+                id="logoutButton"
+                type="button"
+                class="logout-button"
+            >
+                خروج از سیستم
+            </button>
+
+        </div>
 
     </aside>
 
 
-    <main>
+    <!-- =================================================
+         MAIN AREA
+    ================================================== -->
 
-      <header class="top">
+    <main class="admin-main">
 
-        <div>
-          <small>CONTROL CENTER</small>
-          <h1 id="title">داشبورد</h1>
-        </div>
+        <!-- TOP BAR -->
 
-        <a
-          class="store-link"
-          href="/"
+        <header class="admin-topbar">
+
+            <div class="topbar-left">
+
+                <button
+                    id="mobileMenuButton"
+                    type="button"
+                    class="mobile-menu-button"
+                >
+                    ☰
+                </button>
+
+                <div>
+
+                    <div
+                        id="pageKicker"
+                        class="page-kicker"
+                    >
+                        SYSTEM // DASHBOARD
+                    </div>
+
+                    <h1
+                        id="pageTitle"
+                        class="page-title"
+                    >
+                        داشبورد
+                    </h1>
+
+                </div>
+
+            </div>
+
+
+            <div class="topbar-right">
+
+                <div class="topbar-status">
+
+                    <span class="status-dot"></span>
+
+                    <span>
+                        NETWORK ONLINE
+                    </span>
+
+                </div>
+
+                <button
+                    id="refreshButton"
+                    type="button"
+                    class="icon-button"
+                    title="Refresh"
+                >
+                    ↻
+                </button>
+
+            </div>
+
+        </header>
+
+
+        <!-- CONTENT -->
+
+        <section
+            id="content"
+            class="admin-content"
         >
-          🛒 مشاهده فروشگاه
-        </a>
 
-      </header>
+            <div class="content-loading">
+                INITIALIZING CONTROL SYSTEM...
+            </div>
 
-
-      <div id="toast" class="toast"></div>
-
-      <section id="view"></section>
+        </section>
 
     </main>
 
-  </div>
+</div>
 
 
-  <script src="/admin.js"></script>
+<!-- =====================================================
+     GLOBAL MODAL
+===================================================== -->
+
+<div
+    id="adminModal"
+    class="admin-modal"
+    hidden
+>
+
+    <div class="admin-modal-overlay"></div>
+
+    <div class="admin-modal-box">
+
+        <button
+            id="modalClose"
+            type="button"
+            class="modal-close"
+        >
+            ×
+        </button>
+
+        <div
+            id="modalContent"
+            class="modal-content"
+        ></div>
+
+    </div>
+
+</div>
+
+
+<!-- =====================================================
+     TOAST
+===================================================== -->
+
+<div
+    id="adminToast"
+    class="admin-toast"
+></div>
+
+
+<script src="/admin.js"></script>
 
 </body>
 </html>
