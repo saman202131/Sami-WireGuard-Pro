@@ -2011,3 +2011,631 @@ async function viewReceipt(
     );
   }
 }
+async function renderCustomersPage() {
+  await loadCustomers();
+
+  const customers = Array.isArray(
+    state.customers
+  )
+    ? state.customers
+    : [];
+
+  $("#content").innerHTML = `
+    <section class="admin-page">
+
+      <div class="page-head">
+        <div>
+          <span class="page-kicker">
+            کاربران
+          </span>
+
+          <h2>
+            مشتریان
+          </h2>
+
+          <p>
+            مدیریت کاربران ثبت‌نام‌شده و اطلاعات حساب
+          </p>
+        </div>
+      </div>
+
+      <div class="admin-card">
+
+        <div class="table-wrap">
+
+          <table class="admin-table">
+
+            <thead>
+              <tr>
+                <th>شماره</th>
+                <th>نام</th>
+                <th>تعداد سفارش</th>
+                <th>موجودی</th>
+                <th>تاریخ ثبت‌نام</th>
+                <th>وضعیت</th>
+              </tr>
+            </thead>
+
+            <tbody>
+
+              ${
+                customers.length
+                  ? customers
+                      .map(
+                        (customer) => `
+                          <tr>
+
+                            <td>
+                              ${escapeHtml(
+                                customer.phone ||
+                                "-"
+                              )}
+                            </td>
+
+                            <td>
+                              ${escapeHtml(
+                                customer.name ||
+                                "بدون نام"
+                              )}
+                            </td>
+
+                            <td>
+                              ${Number(
+                                customer.orderCount ||
+                                0
+                              )}
+                            </td>
+
+                            <td>
+                              ${formatMoney(
+                                customer.balance ||
+                                0
+                              )}
+                            </td>
+
+                            <td>
+                              ${formatDate(
+                                customer.createdAt
+                              )}
+                            </td>
+
+                            <td>
+                              ${statusBadge(
+                                customer.active === false
+                                  ? "inactive"
+                                  : "active"
+                              )}
+                            </td>
+
+                          </tr>
+                        `
+                      )
+                      .join("")
+                  : `
+                    <tr>
+                      <td colspan="6">
+                        کاربری وجود ندارد.
+                      </td>
+                    </tr>
+                  `
+              }
+
+            </tbody>
+
+          </table>
+
+        </div>
+
+      </div>
+
+    </section>
+  `;
+}
+
+async function renderServicesPage() {
+  await loadServices();
+
+  const services =
+    Array.isArray(
+      state.services
+    )
+      ? state.services
+      : [];
+
+  $("#content").innerHTML = `
+    <section class="admin-page">
+
+      <div class="page-head">
+
+        <div>
+          <span class="page-kicker">
+            سرویس‌ها
+          </span>
+
+          <h2>
+            سرویس‌های تحویل‌شده
+          </h2>
+
+          <p>
+            مشاهده سرویس‌هایی که برای مشتریان ارسال شده‌اند
+          </p>
+        </div>
+
+      </div>
+
+      <div class="admin-card">
+
+        <div class="table-wrap">
+
+          <table class="admin-table">
+
+            <thead>
+              <tr>
+                <th>مشتری</th>
+                <th>محصول</th>
+                <th>سرور</th>
+                <th>شروع</th>
+                <th>انقضا</th>
+                <th>وضعیت</th>
+              </tr>
+            </thead>
+
+            <tbody>
+
+              ${
+                services.length
+                  ? services
+                      .map(
+                        (service) => `
+                          <tr>
+
+                            <td>
+                              ${escapeHtml(
+                                service.customerPhone ||
+                                service.phone ||
+                                service.user?.phone ||
+                                "-"
+                              )}
+                            </td>
+
+                            <td>
+                              ${escapeHtml(
+                                service.productName ||
+                                "-"
+                              )}
+                            </td>
+
+                            <td>
+                              ${escapeHtml(
+                                service.server ||
+                                "Auto"
+                              )}
+                            </td>
+
+                            <td>
+                              ${formatDate(
+                                service.startAt ||
+                                service.createdAt
+                              )}
+                            </td>
+
+                            <td>
+                              ${formatDate(
+                                service.expiresAt
+                              )}
+                            </td>
+
+                            <td>
+                              ${statusBadge(
+                                service.status ||
+                                "active"
+                              )}
+                            </td>
+
+                          </tr>
+                        `
+                      )
+                      .join("")
+                  : `
+                    <tr>
+                      <td colspan="6">
+                        سرویسی وجود ندارد.
+                      </td>
+                    </tr>
+                  `
+              }
+
+            </tbody>
+
+          </table>
+
+        </div>
+
+      </div>
+
+    </section>
+  `;
+}
+
+async function renderTicketsPage() {
+  await loadTickets();
+
+  const tickets =
+    Array.isArray(
+      state.tickets
+    )
+      ? state.tickets
+      : [];
+
+  $("#content").innerHTML = `
+    <section class="admin-page">
+
+      <div class="page-head">
+
+        <div>
+          <span class="page-kicker">
+            پشتیبانی
+          </span>
+
+          <h2>
+            تیکت‌ها
+          </h2>
+
+          <p>
+            پیام‌ها و درخواست‌های پشتیبانی مشتریان
+          </p>
+        </div>
+
+        <div class="page-actions">
+          <button
+            class="admin-button secondary"
+            onclick="loadTickets().then(() => navigate('tickets'))"
+          >
+            بروزرسانی
+          </button>
+        </div>
+
+      </div>
+
+      <div class="admin-card">
+
+        <div class="table-wrap">
+
+          <table class="admin-table">
+
+            <thead>
+              <tr>
+                <th>شناسه</th>
+                <th>مشتری</th>
+                <th>موضوع</th>
+                <th>وضعیت</th>
+                <th>تاریخ</th>
+                <th>عملیات</th>
+              </tr>
+            </thead>
+
+            <tbody>
+
+              ${
+                tickets.length
+                  ? tickets
+                      .map(
+                        (ticket) => `
+                          <tr>
+
+                            <td>
+                              <code>
+                                ${escapeHtml(
+                                  ticket.id ||
+                                  "-"
+                                )}
+                              </code>
+                            </td>
+
+                            <td>
+                              ${escapeHtml(
+                                ticket.phone ||
+                                ticket.user?.phone ||
+                                "-"
+                              )}
+                            </td>
+
+                            <td>
+                              ${escapeHtml(
+                                ticket.subject ||
+                                "بدون موضوع"
+                              )}
+                            </td>
+
+                            <td>
+                              ${statusBadge(
+                                ticket.status ||
+                                "open"
+                              )}
+                            </td>
+
+                            <td>
+                              ${formatDate(
+                                ticket.createdAt
+                              )}
+                            </td>
+
+                            <td>
+
+                              <button
+                                class="admin-button small"
+                                onclick='openTicketModal(${JSON.stringify(
+                                  ticket
+                                )})'
+                              >
+                                مشاهده
+                              </button>
+
+                            </td>
+
+                          </tr>
+                        `
+                      )
+                      .join("")
+                  : `
+                    <tr>
+                      <td colspan="6">
+                        تیکتی وجود ندارد.
+                      </td>
+                    </tr>
+                  `
+              }
+
+            </tbody>
+
+          </table>
+
+        </div>
+
+      </div>
+
+    </section>
+  `;
+}
+
+function openTicketModal(
+  ticket = {}
+) {
+  const messages =
+    Array.isArray(
+      ticket.messages
+    )
+      ? ticket.messages
+      : [];
+
+  openModal(
+    "جزئیات تیکت",
+
+    `
+      <div class="ticket-details">
+
+        <div class="detail-grid">
+
+          <div class="detail-item">
+            <span>شناسه</span>
+            <strong>
+              ${escapeHtml(
+                ticket.id ||
+                "-"
+              )}
+            </strong>
+          </div>
+
+          <div class="detail-item">
+            <span>مشتری</span>
+            <strong>
+              ${escapeHtml(
+                ticket.phone ||
+                ticket.user?.phone ||
+                "-"
+              )}
+            </strong>
+          </div>
+
+          <div class="detail-item">
+            <span>موضوع</span>
+            <strong>
+              ${escapeHtml(
+                ticket.subject ||
+                "-"
+              )}
+            </strong>
+          </div>
+
+          <div class="detail-item">
+            <span>وضعیت</span>
+            <strong>
+              ${statusBadge(
+                ticket.status ||
+                "open"
+              )}
+            </strong>
+          </div>
+
+        </div>
+
+        <div class="ticket-messages">
+
+          ${
+            messages.length
+              ? messages
+                  .map(
+                    (message) => `
+                      <div class="detail-box">
+
+                        <strong>
+                          ${escapeHtml(
+                            message.sender ||
+                            "user"
+                          )}
+                        </strong>
+
+                        <p>
+                          ${escapeHtml(
+                            message.text ||
+                            message.message ||
+                            ""
+                          )}
+                        </p>
+
+                        <small>
+                          ${formatDate(
+                            message.createdAt
+                          )}
+                        </small>
+
+                      </div>
+                    `
+                  )
+                  .join("")
+              : `
+                <div class="detail-box">
+                  <p>
+                    پیامی ثبت نشده است.
+                  </p>
+                </div>
+              `
+          }
+
+        </div>
+
+        <hr>
+
+        <form id="ticketReplyForm">
+
+          <label>
+            پاسخ
+
+            <textarea
+              name="message"
+              rows="5"
+              required
+              placeholder="پاسخ خود را بنویسید..."
+            ></textarea>
+
+          </label>
+
+          <label>
+            وضعیت
+
+            <select name="status">
+
+              <option
+                value="open"
+                ${
+                  ticket.status === "open"
+                    ? "selected"
+                    : ""
+                }
+              >
+                باز
+              </option>
+
+              <option
+                value="pending"
+                ${
+                  ticket.status === "pending"
+                    ? "selected"
+                    : ""
+                }
+              >
+                در انتظار
+              </option>
+
+              <option
+                value="closed"
+                ${
+                  ticket.status === "closed"
+                    ? "selected"
+                    : ""
+                }
+              >
+                بسته
+              </option>
+
+            </select>
+
+          </label>
+
+          <button
+            type="submit"
+            class="admin-button"
+          >
+            ارسال پاسخ
+          </button>
+
+        </form>
+
+      </div>
+    `
+  );
+
+  $("#ticketReplyForm").onsubmit =
+    (event) =>
+      replyToTicket(
+        event,
+        ticket.id
+      );
+}
+
+async function replyToTicket(
+  event,
+  ticketId
+) {
+  event.preventDefault();
+
+  const form =
+    new FormData(
+      event.target
+    );
+
+  const payload = {
+    message:
+      form.get("message") ||
+      "",
+
+    status:
+      form.get("status") ||
+      "open"
+  };
+
+  try {
+    await apiFetch(
+      `/api/tickets/${encodeURIComponent(
+        ticketId
+      )}`,
+      {
+        method: "PUT",
+
+        headers: {
+          "Content-Type":
+            "application/json"
+        },
+
+        body:
+          JSON.stringify(
+            payload
+          )
+      }
+    );
+
+    closeModal();
+
+    await loadTickets();
+    await navigate("tickets");
+
+    showToast(
+      "پاسخ تیکت ارسال شد."
+    );
+  } catch (error) {
+    showToast(
+      error.message,
+      "error"
+    );
+  }
+}
