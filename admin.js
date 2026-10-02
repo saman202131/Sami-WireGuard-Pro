@@ -3463,3 +3463,568 @@ async function saveFlashSale(
     );
   }
 }
+async function renderWheelPage() {
+  await loadWheel();
+
+  const wheel =
+    state.wheel || {};
+
+  const prizes =
+    Array.isArray(
+      wheel.prizes
+    )
+      ? wheel.prizes
+      : [];
+
+  $("#content").innerHTML = `
+    <section class="admin-page">
+
+      <div class="page-head">
+
+        <div>
+          <span class="page-kicker">
+            جایزه
+          </span>
+
+          <h2>
+            گردونه شانس
+          </h2>
+
+          <p>
+            مدیریت گردونه، جوایز و شانس دریافت جایزه
+          </p>
+        </div>
+
+      </div>
+
+      <div class="admin-card">
+
+        <form id="wheelSettingsForm">
+
+          <label class="checkbox-row">
+
+            <input
+              type="checkbox"
+              name="active"
+              ${
+                wheel.active
+                  ? "checked"
+                  : ""
+              }
+            >
+
+            گردونه فعال باشد
+
+          </label>
+
+          <label>
+            عنوان
+
+            <input
+              name="title"
+              value="${escapeHtml(
+                wheel.title ||
+                "گردونه شانس"
+              )}"
+            >
+          </label>
+
+          <label>
+            توضیحات
+
+            <textarea
+              name="description"
+              rows="4"
+            >${escapeHtml(
+              wheel.description ||
+              ""
+            )}</textarea>
+
+          </label>
+
+          <label>
+            تعداد چرخش مجاز روزانه
+
+            <input
+              type="number"
+              name="dailyLimit"
+              min="0"
+              value="${Number(
+                wheel.dailyLimit ||
+                1
+              )}"
+            >
+          </label>
+
+          <button
+            class="admin-button"
+            type="submit"
+          >
+            ذخیره تنظیمات گردونه
+          </button>
+
+        </form>
+
+      </div>
+
+      <div class="admin-card">
+
+        <div class="page-head compact">
+
+          <div>
+            <h3>
+              جوایز گردونه
+            </h3>
+
+            <p>
+              وزن بیشتر یعنی احتمال بیشتر برای انتخاب
+            </p>
+          </div>
+
+          <button
+            class="admin-button"
+            onclick="openWheelPrizeModal()"
+          >
+            + جایزه جدید
+          </button>
+
+        </div>
+
+        <div class="table-wrap">
+
+          <table class="admin-table">
+
+            <thead>
+              <tr>
+                <th>عنوان</th>
+                <th>نوع</th>
+                <th>مقدار</th>
+                <th>وزن</th>
+                <th>وضعیت</th>
+                <th>عملیات</th>
+              </tr>
+            </thead>
+
+            <tbody>
+
+              ${
+                prizes.length
+                  ? prizes
+                      .map(
+                        (prize) => `
+                          <tr>
+
+                            <td>
+                              ${escapeHtml(
+                                prize.title ||
+                                "-"
+                              )}
+                            </td>
+
+                            <td>
+                              ${escapeHtml(
+                                prize.type ||
+                                "-"
+                              )}
+                            </td>
+
+                            <td>
+                              ${escapeHtml(
+                                String(
+                                  prize.value ??
+                                  "-"
+                                )
+                              )}
+                            </td>
+
+                            <td>
+                              ${Number(
+                                prize.weight ||
+                                0
+                              )}
+                            </td>
+
+                            <td>
+                              ${statusBadge(
+                                prize.active === false
+                                  ? "inactive"
+                                  : "active"
+                              )}
+                            </td>
+
+                            <td>
+
+                              <button
+                                class="admin-button small"
+                                onclick='openWheelPrizeModal(${JSON.stringify(
+                                  prize
+                                )})'
+                              >
+                                ویرایش
+                              </button>
+
+                            </td>
+
+                          </tr>
+                        `
+                      )
+                      .join("")
+                  : `
+                    <tr>
+                      <td colspan="6">
+                        جایزه‌ای ثبت نشده است.
+                      </td>
+                    </tr>
+                  `
+              }
+
+            </tbody>
+
+          </table>
+
+        </div>
+
+      </div>
+
+    </section>
+  `;
+
+  $("#wheelSettingsForm").onsubmit =
+    saveWheelSettings;
+}
+
+async function saveWheelSettings(
+  event
+) {
+  event.preventDefault();
+
+  const form =
+    new FormData(
+      event.target
+    );
+
+  const payload = {
+    active:
+      form.get("active") ===
+      "on",
+
+    title:
+      form.get("title") ||
+      "گردونه شانس",
+
+    description:
+      form.get(
+        "description"
+      ) || "",
+
+    dailyLimit:
+      Number(
+        form.get(
+          "dailyLimit"
+        ) || 1
+      ),
+
+    prizes:
+      Array.isArray(
+        state.wheel?.prizes
+      )
+        ? state.wheel.prizes
+        : []
+  };
+
+  try {
+    await apiFetch(
+      "/api/wheel",
+      {
+        method: "PUT",
+
+        headers: {
+          "Content-Type":
+            "application/json"
+        },
+
+        body:
+          JSON.stringify(
+            payload
+          )
+      }
+    );
+
+    await loadWheel();
+
+    await navigate(
+      "wheel"
+    );
+
+    showToast(
+      "تنظیمات گردونه ذخیره شد."
+    );
+  } catch (error) {
+    showToast(
+      error.message,
+      "error"
+    );
+  }
+}
+
+function openWheelPrizeModal(
+  prize = {}
+) {
+  openModal(
+    prize.id
+      ? "ویرایش جایزه"
+      : "جایزه جدید",
+
+    `
+      <form id="wheelPrizeForm">
+
+        <input
+          type="hidden"
+          name="id"
+          value="${escapeHtml(
+            prize.id ||
+            ""
+          )}"
+        >
+
+        <label>
+          عنوان جایزه
+
+          <input
+            name="title"
+            value="${escapeHtml(
+              prize.title ||
+              ""
+            )}"
+            required
+          >
+        </label>
+
+        <label>
+          نوع
+
+          <select name="type">
+
+            <option
+              value="percent"
+              ${
+                prize.type ===
+                "percent"
+                  ? "selected"
+                  : ""
+              }
+            >
+              درصد تخفیف
+            </option>
+
+            <option
+              value="fixed"
+              ${
+                prize.type ===
+                "fixed"
+                  ? "selected"
+                  : ""
+              }
+            >
+              مبلغ ثابت
+            </option>
+
+            <option
+              value="coupon"
+              ${
+                prize.type ===
+                "coupon"
+                  ? "selected"
+                  : ""
+              }
+            >
+              کد تخفیف
+            </option>
+
+            <option
+              value="nothing"
+              ${
+                prize.type ===
+                "nothing"
+                  ? "selected"
+                  : ""
+              }
+            >
+              بدون جایزه
+            </option>
+
+          </select>
+
+        </label>
+
+        <label>
+          مقدار
+
+          <input
+            name="value"
+            value="${escapeHtml(
+              String(
+                prize.value ??
+                ""
+              )
+            )}"
+          >
+        </label>
+
+        <label>
+          وزن
+
+          <input
+            type="number"
+            name="weight"
+            min="0"
+            value="${Number(
+              prize.weight ||
+              1
+            )}"
+          >
+        </label>
+
+        <label class="checkbox-row">
+
+          <input
+            type="checkbox"
+            name="active"
+            ${
+              prize.active !== false
+                ? "checked"
+                : ""
+            }
+          >
+
+          فعال
+
+        </label>
+
+        <button
+          type="submit"
+          class="admin-button"
+        >
+          ذخیره جایزه
+        </button>
+
+      </form>
+    `
+  );
+
+  $("#wheelPrizeForm").onsubmit =
+    saveWheelPrize;
+}
+
+async function saveWheelPrize(
+  event
+) {
+  event.preventDefault();
+
+  const form =
+    new FormData(
+      event.target
+    );
+
+  const prize = {
+    id:
+      form.get("id") ||
+      makeClientId(),
+
+    title:
+      form.get("title") ||
+      "",
+
+    type:
+      form.get("type") ||
+      "nothing",
+
+    value:
+      form.get("value") ||
+      "",
+
+    weight:
+      Number(
+        form.get("weight") ||
+        1
+      ),
+
+    active:
+      form.get("active") ===
+      "on"
+  };
+
+  const prizes =
+    Array.isArray(
+      state.wheel?.prizes
+    )
+      ? [
+          ...state.wheel.prizes
+        ]
+      : [];
+
+  const index =
+    prizes.findIndex(
+      (item) =>
+        item.id ===
+        prize.id
+    );
+
+  if (index >= 0) {
+    prizes[index] =
+      prize;
+  } else {
+    prizes.push(
+      prize
+    );
+  }
+
+  try {
+    await apiFetch(
+      "/api/wheel",
+      {
+        method: "PUT",
+
+        headers: {
+          "Content-Type":
+            "application/json"
+        },
+
+        body:
+          JSON.stringify({
+            ...(state.wheel ||
+              {}),
+            prizes
+          })
+      }
+    );
+
+    closeModal();
+
+    await loadWheel();
+
+    await navigate(
+      "wheel"
+    );
+
+    showToast(
+      "جایزه ذخیره شد."
+    );
+  } catch (error) {
+    showToast(
+      error.message,
+      "error"
+    );
+  }
+}
+
+function makeClientId() {
+  return (
+    "id_" +
+    Date.now() +
+    "_" +
+    Math.random()
+      .toString(36)
+      .slice(2, 8)
+  );
+}
