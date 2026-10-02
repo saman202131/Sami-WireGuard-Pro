@@ -3207,3 +3207,259 @@ async function deleteCoupon(
     );
   }
 }
+async function renderFlashSalePage() {
+  await loadFlashSale();
+
+  const sale =
+    state.flashSale || {};
+
+  $("#content").innerHTML = `
+    <section class="admin-page">
+
+      <div class="page-head">
+
+        <div>
+          <span class="page-kicker">
+            فروش ویژه
+          </span>
+
+          <h2>
+            Flash Sale
+          </h2>
+
+          <p>
+            مدیریت فروش محدود و تخفیف ویژه محصولات
+          </p>
+        </div>
+
+      </div>
+
+      <div class="admin-card">
+
+        <form id="flashSaleForm">
+
+          <label class="checkbox-row">
+            <input
+              type="checkbox"
+              name="active"
+              ${
+                sale.active
+                  ? "checked"
+                  : ""
+              }
+            >
+            فروش ویژه فعال باشد
+          </label>
+
+          <label>
+            عنوان
+
+            <input
+              name="title"
+              value="${escapeHtml(
+                sale.title ||
+                "فروش ویژه"
+              )}"
+            >
+          </label>
+
+          <label>
+            توضیحات
+
+            <textarea
+              name="description"
+              rows="4"
+            >${escapeHtml(
+              sale.description ||
+              ""
+            )}</textarea>
+          </label>
+
+          <label>
+            درصد تخفیف
+
+            <input
+              type="number"
+              name="discount"
+              min="0"
+              max="100"
+              value="${Number(
+                sale.discount ||
+                0
+              )}"
+            >
+          </label>
+
+          <label>
+            شروع
+
+            <input
+              type="datetime-local"
+              name="startsAt"
+              value="${toDateTimeLocal(
+                sale.startsAt
+              )}"
+            >
+          </label>
+
+          <label>
+            پایان
+
+            <input
+              type="datetime-local"
+              name="endsAt"
+              value="${toDateTimeLocal(
+                sale.endsAt
+              )}"
+            >
+          </label>
+
+          <label>
+            محصولات
+
+            <textarea
+              name="productIds"
+              rows="5"
+              placeholder="هر شناسه محصول در یک خط"
+            >${escapeHtml(
+              Array.isArray(
+                sale.productIds
+              )
+                ? sale.productIds.join(
+                    "\n"
+                  )
+                : ""
+            )}</textarea>
+          </label>
+
+          <button
+            class="admin-button"
+            type="submit"
+          >
+            ذخیره فروش ویژه
+          </button>
+
+        </form>
+
+      </div>
+
+    </section>
+  `;
+
+  $("#flashSaleForm").onsubmit =
+    saveFlashSale;
+}
+
+async function saveFlashSale(
+  event
+) {
+  event.preventDefault();
+
+  const form =
+    new FormData(
+      event.target
+    );
+
+  const productIds =
+    String(
+      form.get(
+        "productIds"
+      ) || ""
+    )
+      .split("\n")
+      .map(
+        (id) => id.trim()
+      )
+      .filter(Boolean);
+
+  const payload = {
+    active:
+      form.get("active") ===
+      "on",
+
+    title:
+      form.get("title") ||
+      "فروش ویژه",
+
+    description:
+      form.get(
+        "description"
+      ) || "",
+
+    discount:
+      Number(
+        form.get(
+          "discount"
+        ) || 0
+      ),
+
+    startsAt:
+      form.get(
+        "startsAt"
+      )
+        ? new Date(
+            form.get(
+              "startsAt"
+            )
+          ).toISOString()
+        : null,
+
+    endsAt:
+      form.get(
+        "endsAt"
+      )
+        ? new Date(
+            form.get(
+              "endsAt"
+            )
+          ).toISOString()
+        : null,
+
+    productIds
+  };
+
+  if (
+    payload.discount < 0 ||
+    payload.discount > 100
+  ) {
+    showToast(
+      "درصد تخفیف باید بین 0 تا 100 باشد.",
+      "error"
+    );
+    return;
+  }
+
+  try {
+    await apiFetch(
+      "/api/flash-sale",
+      {
+        method: "PUT",
+
+        headers: {
+          "Content-Type":
+            "application/json"
+        },
+
+        body:
+          JSON.stringify(
+            payload
+          )
+      }
+    );
+
+    await loadFlashSale();
+
+    await navigate(
+      "flash-sale"
+    );
+
+    showToast(
+      "فروش ویژه ذخیره شد."
+    );
+  } catch (error) {
+    showToast(
+      error.message,
+      "error"
+    );
+  }
+}
