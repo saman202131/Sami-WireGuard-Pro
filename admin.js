@@ -1396,3 +1396,618 @@ async function saveProduct(event) {
     );
   }
 }
+async function renderOrdersPage() {
+  await loadOrders();
+
+  const orders = Array.isArray(state.orders)
+    ? state.orders
+    : [];
+
+  $("#content").innerHTML = `
+    <section class="admin-page">
+
+      <div class="page-head">
+        <div>
+          <span class="page-kicker">
+            مدیریت سفارش‌ها
+          </span>
+
+          <h2>
+            سفارش‌ها
+          </h2>
+
+          <p>
+            بررسی پرداخت، رسید، وضعیت سفارش و تحویل سرویس
+          </p>
+        </div>
+
+        <div class="page-actions">
+          <button
+            class="admin-button secondary"
+            onclick="loadOrders().then(() => navigate('orders'))"
+          >
+            بروزرسانی
+          </button>
+        </div>
+      </div>
+
+      <div class="admin-card">
+
+        <div class="table-wrap">
+
+          <table class="admin-table">
+
+            <thead>
+              <tr>
+                <th>شناسه</th>
+                <th>مشتری</th>
+                <th>محصول</th>
+                <th>مبلغ</th>
+                <th>وضعیت</th>
+                <th>تاریخ</th>
+                <th>عملیات</th>
+              </tr>
+            </thead>
+
+            <tbody>
+
+              ${
+                orders.length
+                  ? orders
+                      .map(
+                        (order) => `
+                          <tr>
+
+                            <td>
+                              <code>
+                                ${escapeHtml(
+                                  order.id ||
+                                  "-"
+                                )}
+                              </code>
+                            </td>
+
+                            <td>
+                              <strong>
+                                ${escapeHtml(
+                                  order.user?.phone ||
+                                  order.phone ||
+                                  "-"
+                                )}
+                              </strong>
+
+                              ${
+                                order.user?.name
+                                  ? `
+                                    <small>
+                                      ${escapeHtml(
+                                        order.user.name
+                                      )}
+                                    </small>
+                                  `
+                                  : ""
+                              }
+                            </td>
+
+                            <td>
+                              ${escapeHtml(
+                                order.productName ||
+                                order.product?.name ||
+                                "-"
+                              )}
+                            </td>
+
+                            <td>
+                              ${formatMoney(
+                                order.amount ||
+                                order.price ||
+                                0
+                              )}
+                            </td>
+
+                            <td>
+                              ${statusBadge(
+                                order.status ||
+                                "pending"
+                              )}
+                            </td>
+
+                            <td>
+                              ${formatDate(
+                                order.createdAt
+                              )}
+                            </td>
+
+                            <td>
+
+                              <div class="table-actions">
+
+                                <button
+                                  class="admin-button small"
+                                  onclick='openOrderModal(${JSON.stringify(
+                                    order
+                                  )})'
+                                >
+                                  مشاهده
+                                </button>
+
+                                ${
+                                  order.receipt
+                                    ? `
+                                      <button
+                                        class="admin-button small secondary"
+                                        onclick="viewReceipt('${escapeHtml(
+                                          order.id
+                                        )}')"
+                                      >
+                                        رسید
+                                      </button>
+                                    `
+                                    : ""
+                                }
+
+                              </div>
+
+                            </td>
+
+                          </tr>
+                        `
+                      )
+                      .join("")
+                  : `
+                    <tr>
+                      <td colspan="7">
+                        سفارشی وجود ندارد.
+                      </td>
+                    </tr>
+                  `
+              }
+
+            </tbody>
+
+          </table>
+
+        </div>
+
+      </div>
+
+    </section>
+  `;
+}
+
+function openOrderModal(order = {}) {
+  const status =
+    order.status ||
+    "pending";
+
+  openModal(
+    "جزئیات سفارش",
+
+    `
+      <div class="order-details">
+
+        <div class="detail-grid">
+
+          <div class="detail-item">
+            <span>شناسه سفارش</span>
+            <strong>
+              ${escapeHtml(
+                order.id ||
+                "-"
+              )}
+            </strong>
+          </div>
+
+          <div class="detail-item">
+            <span>وضعیت</span>
+            <strong>
+              ${statusBadge(
+                status
+              )}
+            </strong>
+          </div>
+
+          <div class="detail-item">
+            <span>شماره مشتری</span>
+            <strong>
+              ${escapeHtml(
+                order.user?.phone ||
+                order.phone ||
+                "-"
+              )}
+            </strong>
+          </div>
+
+          <div class="detail-item">
+            <span>محصول</span>
+            <strong>
+              ${escapeHtml(
+                order.productName ||
+                order.product?.name ||
+                "-"
+              )}
+            </strong>
+          </div>
+
+          <div class="detail-item">
+            <span>مبلغ</span>
+            <strong>
+              ${formatMoney(
+                order.amount ||
+                order.price ||
+                0
+              )}
+            </strong>
+          </div>
+
+          <div class="detail-item">
+            <span>تاریخ ثبت</span>
+            <strong>
+              ${formatDate(
+                order.createdAt
+              )}
+            </strong>
+          </div>
+
+        </div>
+
+        ${
+          order.notes
+            ? `
+              <div class="detail-box">
+                <span>یادداشت مشتری</span>
+                <p>
+                  ${escapeHtml(
+                    order.notes
+                  )}
+                </p>
+              </div>
+            `
+            : ""
+        }
+
+        <hr>
+
+        <form id="orderStatusForm">
+
+          <label>
+            وضعیت سفارش
+
+            <select name="status">
+
+              <option
+                value="pending"
+                ${
+                  status === "pending"
+                    ? "selected"
+                    : ""
+                }
+              >
+                در انتظار بررسی
+              </option>
+
+              <option
+                value="approved"
+                ${
+                  status === "approved"
+                    ? "selected"
+                    : ""
+                }
+              >
+                تایید شده
+              </option>
+
+              <option
+                value="rejected"
+                ${
+                  status === "rejected"
+                    ? "selected"
+                    : ""
+                }
+              >
+                رد شده
+              </option>
+
+              <option
+                value="delivered"
+                ${
+                  status === "delivered"
+                    ? "selected"
+                    : ""
+                }
+              >
+                تحویل شده
+              </option>
+
+            </select>
+
+          </label>
+
+          <label>
+            توضیح وضعیت
+
+            <textarea
+              name="statusNote"
+              rows="3"
+              placeholder="توضیح اختیاری برای سفارش"
+            >${escapeHtml(
+              order.statusNote ||
+              ""
+            )}</textarea>
+
+          </label>
+
+          <button
+            type="submit"
+            class="admin-button"
+          >
+            ذخیره وضعیت
+          </button>
+
+        </form>
+
+        <hr>
+
+        <form id="deliveryForm">
+
+          <h3>
+            تحویل سرویس
+          </h3>
+
+          <label>
+            لینک اشتراک
+
+            <input
+              name="subscriptionUrl"
+              value="${escapeHtml(
+                order.subscriptionUrl ||
+                ""
+              )}"
+              placeholder="https://..."
+            >
+          </label>
+
+          <label>
+            فایل کانفیگ WireGuard
+
+            <textarea
+              name="config"
+              rows="8"
+              placeholder="[Interface]&#10;PrivateKey = ...&#10;Address = ...&#10;&#10;[Peer]&#10;PublicKey = ..."
+            >${escapeHtml(
+              order.config ||
+              ""
+            )}</textarea>
+
+          </label>
+
+          <label>
+            QR Code
+
+            <input
+              name="qrCode"
+              value="${escapeHtml(
+                order.qrCode ||
+                ""
+              )}"
+              placeholder="لینک تصویر QR یا data URL"
+            >
+          </label>
+
+          <label>
+            توضیحات تحویل
+
+            <textarea
+              name="deliveryNote"
+              rows="4"
+              placeholder="توضیحات سرویس برای مشتری"
+            >${escapeHtml(
+              order.deliveryNote ||
+              ""
+            )}</textarea>
+
+          </label>
+
+          <button
+            type="submit"
+            class="admin-button"
+          >
+            ثبت و تحویل سرویس
+          </button>
+
+        </form>
+
+      </div>
+    `
+  );
+
+  $("#orderStatusForm").onsubmit =
+    (event) =>
+      updateOrderStatus(
+        event,
+        order.id
+      );
+
+  $("#deliveryForm").onsubmit =
+    (event) =>
+      deliverOrder(
+        event,
+        order.id
+      );
+}
+
+async function updateOrderStatus(
+  event,
+  orderId
+) {
+  event.preventDefault();
+
+  const form =
+    new FormData(
+      event.target
+    );
+
+  const payload = {
+    status:
+      form.get("status"),
+
+    statusNote:
+      form.get("statusNote") ||
+      ""
+  };
+
+  try {
+    await apiFetch(
+      `/api/orders/${encodeURIComponent(
+        orderId
+      )}/status`,
+      {
+        method: "PUT",
+
+        headers: {
+          "Content-Type":
+            "application/json"
+        },
+
+        body:
+          JSON.stringify(
+            payload
+          )
+      }
+    );
+
+    closeModal();
+
+    await loadOrders();
+    await navigate("orders");
+
+    showToast(
+      "وضعیت سفارش ذخیره شد."
+    );
+  } catch (error) {
+    showToast(
+      error.message,
+      "error"
+    );
+  }
+}
+
+async function deliverOrder(
+  event,
+  orderId
+) {
+  event.preventDefault();
+
+  const form =
+    new FormData(
+      event.target
+    );
+
+  const payload = {
+    subscriptionUrl:
+      form.get(
+        "subscriptionUrl"
+      ) || "",
+
+    config:
+      form.get("config") ||
+      "",
+
+    qrCode:
+      form.get("qrCode") ||
+      "",
+
+    deliveryNote:
+      form.get(
+        "deliveryNote"
+      ) || ""
+  };
+
+  try {
+    await apiFetch(
+      `/api/orders/${encodeURIComponent(
+        orderId
+      )}/delivery`,
+      {
+        method: "PUT",
+
+        headers: {
+          "Content-Type":
+            "application/json"
+        },
+
+        body:
+          JSON.stringify(
+            payload
+          )
+      }
+    );
+
+    closeModal();
+
+    await loadOrders();
+    await navigate("orders");
+
+    showToast(
+      "سرویس با موفقیت تحویل شد."
+    );
+  } catch (error) {
+    showToast(
+      error.message,
+      "error"
+    );
+  }
+}
+
+async function viewReceipt(
+  orderId
+) {
+  try {
+    const response =
+      await fetch(
+        `/api/orders/${encodeURIComponent(
+          orderId
+        )}/receipt`,
+        {
+          headers: {
+            Authorization:
+              `Bearer ${state.token}`
+          }
+        }
+      );
+
+    if (!response.ok) {
+      throw new Error(
+        "دریافت رسید انجام نشد."
+      );
+    }
+
+    const blob =
+      await response.blob();
+
+    const url =
+      URL.createObjectURL(
+        blob
+      );
+
+    openModal(
+      "رسید پرداخت",
+
+      `
+        <div class="receipt-preview">
+
+          <img
+            src="${url}"
+            alt="رسید پرداخت"
+          >
+
+        </div>
+      `
+    );
+  } catch (error) {
+    showToast(
+      error.message,
+      "error"
+    );
+  }
+}
