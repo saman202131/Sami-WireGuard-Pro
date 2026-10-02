@@ -4028,3 +4028,1975 @@ function makeClientId() {
       .slice(2, 8)
   );
 }
+async function renderServersPage() {
+  await loadServers();
+
+  const servers =
+    Array.isArray(
+      state.servers
+    )
+      ? state.servers
+      : [];
+
+  $("#content").innerHTML = `
+    <section class="admin-page">
+
+      <div class="page-head">
+
+        <div>
+          <span class="page-kicker">
+            زیرساخت
+          </span>
+
+          <h2>
+            سرورها
+          </h2>
+
+          <p>
+            مدیریت سرورهای WireGuard و مشخصات اتصال
+          </p>
+        </div>
+
+        <button
+          class="admin-button"
+          onclick="openServerModal()"
+        >
+          + سرور جدید
+        </button>
+
+      </div>
+
+      <div class="admin-card">
+
+        <div class="table-wrap">
+
+          <table class="admin-table">
+
+            <thead>
+              <tr>
+                <th>نام</th>
+                <th>کشور</th>
+                <th>IP</th>
+                <th>پورت</th>
+                <th>ظرفیت</th>
+                <th>وضعیت</th>
+                <th>عملیات</th>
+              </tr>
+            </thead>
+
+            <tbody>
+
+              ${
+                servers.length
+                  ? servers
+                      .map(
+                        (server) => `
+                          <tr>
+
+                            <td>
+                              ${escapeHtml(
+                                server.name ||
+                                "-"
+                              )}
+                            </td>
+
+                            <td>
+                              ${escapeHtml(
+                                server.country ||
+                                "-"
+                              )}
+                            </td>
+
+                            <td>
+                              <code>
+                                ${escapeHtml(
+                                  server.host ||
+                                  server.ip ||
+                                  "-"
+                                )}
+                              </code>
+                            </td>
+
+                            <td>
+                              ${escapeHtml(
+                                String(
+                                  server.port ||
+                                  "-"
+                                )
+                              )}
+                            </td>
+
+                            <td>
+                              ${Number(
+                                server.capacity ||
+                                0
+                              )}
+                            </td>
+
+                            <td>
+                              ${statusBadge(
+                                server.active === false
+                                  ? "inactive"
+                                  : "active"
+                              )}
+                            </td>
+
+                            <td>
+
+                              <button
+                                class="admin-button small"
+                                onclick='openServerModal(${JSON.stringify(
+                                  server
+                                )})'
+                              >
+                                ویرایش
+                              </button>
+
+                            </td>
+
+                          </tr>
+                        `
+                      )
+                      .join("")
+                  : `
+                    <tr>
+                      <td colspan="7">
+                        سروری ثبت نشده است.
+                      </td>
+                    </tr>
+                  `
+              }
+
+            </tbody>
+
+          </table>
+
+        </div>
+
+      </div>
+
+    </section>
+  `;
+}
+
+function openServerModal(
+  server = {}
+) {
+  openModal(
+    server.id
+      ? "ویرایش سرور"
+      : "سرور جدید",
+
+    `
+      <form id="serverForm">
+
+        <input
+          type="hidden"
+          name="id"
+          value="${escapeHtml(
+            server.id ||
+            ""
+          )}"
+        >
+
+        <label>
+          نام سرور
+
+          <input
+            name="name"
+            value="${escapeHtml(
+              server.name ||
+              ""
+            )}"
+            required
+          >
+        </label>
+
+        <label>
+          کشور
+
+          <input
+            name="country"
+            value="${escapeHtml(
+              server.country ||
+              ""
+            )}"
+          >
+        </label>
+
+        <label>
+          Host / IP
+
+          <input
+            name="host"
+            value="${escapeHtml(
+              server.host ||
+              server.ip ||
+              ""
+            )}"
+            required
+          >
+        </label>
+
+        <label>
+          پورت
+
+          <input
+            type="number"
+            name="port"
+            min="1"
+            max="65535"
+            value="${Number(
+              server.port ||
+              51820
+            )}"
+          >
+        </label>
+
+        <label>
+          ظرفیت
+
+          <input
+            type="number"
+            name="capacity"
+            min="0"
+            value="${Number(
+              server.capacity ||
+              0
+            )}"
+          >
+        </label>
+
+        <label>
+          توضیحات
+
+          <textarea
+            name="description"
+            rows="4"
+          >${escapeHtml(
+            server.description ||
+            ""
+          )}</textarea>
+        </label>
+
+        <label class="checkbox-row">
+
+          <input
+            type="checkbox"
+            name="active"
+            ${
+              server.active !== false
+                ? "checked"
+                : ""
+            }
+          >
+
+          فعال
+
+        </label>
+
+        <button
+          type="submit"
+          class="admin-button"
+        >
+          ذخیره سرور
+        </button>
+
+      </form>
+    `
+  );
+
+  $("#serverForm").onsubmit =
+    saveServer;
+}
+
+async function saveServer(
+  event
+) {
+  event.preventDefault();
+
+  const form =
+    new FormData(
+      event.target
+    );
+
+  const payload = {
+    id:
+      form.get("id") ||
+      "",
+
+    name:
+      form.get("name") ||
+      "",
+
+    country:
+      form.get("country") ||
+      "",
+
+    host:
+      form.get("host") ||
+      "",
+
+    port:
+      Number(
+        form.get("port") ||
+        51820
+      ),
+
+    capacity:
+      Number(
+        form.get(
+          "capacity"
+        ) || 0
+      ),
+
+    description:
+      form.get(
+        "description"
+      ) || "",
+
+    active:
+      form.get("active") ===
+      "on"
+  };
+
+  try {
+    await apiFetch(
+      "/api/servers",
+      {
+        method: "POST",
+
+        headers: {
+          "Content-Type":
+            "application/json"
+        },
+
+        body:
+          JSON.stringify(
+            payload
+          )
+      }
+    );
+
+    closeModal();
+
+    await loadServers();
+
+    await navigate(
+      "servers"
+    );
+
+    showToast(
+      "سرور ذخیره شد."
+    );
+  } catch (error) {
+    showToast(
+      error.message,
+      "error"
+    );
+  }
+}
+async function renderTelegramPage() {
+  const settings =
+    state.settings || {};
+
+  $("#content").innerHTML = `
+    <section class="admin-page">
+
+      <div class="page-head">
+
+        <div>
+          <span class="page-kicker">
+            Telegram
+          </span>
+
+          <h2>
+            تنظیمات ربات
+          </h2>
+
+          <p>
+            اتصال ربات تلگرام به سیستم فروش
+          </p>
+
+        </div>
+
+      </div>
+
+      <div class="admin-card">
+
+        <form id="telegramForm">
+
+          <label>
+            Bot Username
+
+            <input
+              name="telegramBot"
+              value="${escapeHtml(
+                settings.telegramBot ||
+                ""
+              )}"
+              placeholder="@sami91928bot"
+            >
+          </label>
+
+          <label>
+            Support Username
+
+            <input
+              name="telegramSupport"
+              value="${escapeHtml(
+                settings.telegramSupport ||
+                ""
+              )}"
+              placeholder="@saman_s87"
+            >
+          </label>
+
+          <label>
+            Channel Username
+
+            <input
+              name="telegramChannel"
+              value="${escapeHtml(
+                settings.telegramChannel ||
+                ""
+              )}"
+              placeholder="@SamiWireGuard"
+            >
+          </label>
+
+          <label>
+            Bot Token
+
+            <input
+              type="password"
+              name="telegramToken"
+              autocomplete="new-password"
+              placeholder="توکن ربات را وارد کنید"
+            >
+
+            <small>
+              توکن در رابط عمومی سایت نمایش داده نمی‌شود.
+            </small>
+          </label>
+
+          <label>
+            Owner / Admin Numeric ID
+
+            <input
+              name="telegramOwnerId"
+              value="${escapeHtml(
+                settings.telegramOwnerId ||
+                ""
+              )}"
+              inputmode="numeric"
+              placeholder="123456789"
+            >
+          </label>
+
+          <label class="checkbox-row">
+
+            <input
+              type="checkbox"
+              name="telegramEnabled"
+              ${
+                settings.telegramEnabled
+                  ? "checked"
+                  : ""
+              }
+            >
+
+            ربات فعال باشد
+
+          </label>
+
+          <button
+            class="admin-button"
+            type="submit"
+          >
+            ذخیره تنظیمات تلگرام
+          </button>
+
+        </form>
+
+      </div>
+
+      <div class="admin-card">
+
+        <h3>
+          وضعیت ربات
+        </h3>
+
+        <p>
+          ${
+            settings.telegramEnabled
+              ? "ربات فعال است."
+              : "ربات هنوز فعال نشده است."
+          }
+        </p>
+
+      </div>
+
+    </section>
+  `;
+
+  $("#telegramForm").onsubmit =
+    saveTelegramSettings;
+}
+
+async function saveTelegramSettings(
+  event
+) {
+  event.preventDefault();
+
+  const form =
+    new FormData(
+      event.target
+    );
+
+  const payload = {
+    telegramBot:
+      form.get(
+        "telegramBot"
+      ) || "",
+
+    telegramSupport:
+      form.get(
+        "telegramSupport"
+      ) || "",
+
+    telegramChannel:
+      form.get(
+        "telegramChannel"
+      ) || "",
+
+    telegramToken:
+      form.get(
+        "telegramToken"
+      ) || "",
+
+    telegramOwnerId:
+      form.get(
+        "telegramOwnerId"
+      ) || "",
+
+    telegramEnabled:
+      form.get(
+        "telegramEnabled"
+      ) === "on"
+  };
+
+  try {
+    await apiFetch(
+      "/api/settings",
+      {
+        method: "PUT",
+
+        headers: {
+          "Content-Type":
+            "application/json"
+        },
+
+        body:
+          JSON.stringify(
+            payload
+          )
+      }
+    );
+
+    await loadSettings();
+
+    await navigate(
+      "telegram"
+    );
+
+    showToast(
+      "تنظیمات تلگرام ذخیره شد."
+    );
+  } catch (error) {
+    showToast(
+      error.message,
+      "error"
+    );
+  }
+    }
+async function renderNotificationsPage() {
+  await loadNotifications();
+
+  const notifications =
+    Array.isArray(
+      state.notifications
+    )
+      ? state.notifications
+      : [];
+
+  $("#content").innerHTML = `
+    <section class="admin-page">
+
+      <div class="page-head">
+
+        <div>
+          <span class="page-kicker">
+            ارتباط
+          </span>
+
+          <h2>
+            اعلان‌ها
+          </h2>
+
+          <p>
+            ارسال اعلان برای کاربران
+          </p>
+
+        </div>
+
+        <button
+          class="admin-button"
+          onclick="openNotificationModal()"
+        >
+          + اعلان جدید
+        </button>
+
+      </div>
+
+      <div class="admin-card">
+
+        <div class="table-wrap">
+
+          <table class="admin-table">
+
+            <thead>
+              <tr>
+                <th>عنوان</th>
+                <th>پیام</th>
+                <th>مخاطب</th>
+                <th>تاریخ</th>
+              </tr>
+            </thead>
+
+            <tbody>
+
+              ${
+                notifications.length
+                  ? notifications
+                      .map(
+                        (notification) => `
+                          <tr>
+
+                            <td>
+                              ${escapeHtml(
+                                notification.title ||
+                                "-"
+                              )}
+                            </td>
+
+                            <td>
+                              ${escapeHtml(
+                                notification.message ||
+                                ""
+                              )}
+                            </td>
+
+                            <td>
+                              ${escapeHtml(
+                                notification.target ||
+                                "all"
+                              )}
+                            </td>
+
+                            <td>
+                              ${formatDate(
+                                notification.createdAt
+                              )}
+                            </td>
+
+                          </tr>
+                        `
+                      )
+                      .join("")
+                  : `
+                    <tr>
+                      <td colspan="4">
+                        اعلانی ثبت نشده است.
+                      </td>
+                    </tr>
+                  `
+              }
+
+            </tbody>
+
+          </table>
+
+        </div>
+
+      </div>
+
+    </section>
+  `;
+}
+
+function openNotificationModal() {
+  openModal(
+    "اعلان جدید",
+
+    `
+      <form id="notificationForm">
+
+        <label>
+          عنوان
+
+          <input
+            name="title"
+            required
+          >
+        </label>
+
+        <label>
+          پیام
+
+          <textarea
+            name="message"
+            rows="5"
+            required
+          ></textarea>
+        </label>
+
+        <label>
+          مخاطب
+
+          <select name="target">
+
+            <option value="all">
+              همه کاربران
+            </option>
+
+            <option value="customers">
+              مشتریان
+            </option>
+
+            <option value="telegram">
+              کاربران تلگرام
+            </option>
+
+          </select>
+
+        </label>
+
+        <button
+          class="admin-button"
+          type="submit"
+        >
+          ارسال اعلان
+        </button>
+
+      </form>
+    `
+  );
+
+  $("#notificationForm").onsubmit =
+    saveNotification;
+}
+
+async function saveNotification(
+  event
+) {
+  event.preventDefault();
+
+  const form =
+    new FormData(
+      event.target
+    );
+
+  const payload = {
+    title:
+      form.get("title") ||
+      "",
+
+    message:
+      form.get(
+        "message"
+      ) || "",
+
+    target:
+      form.get("target") ||
+      "all"
+  };
+
+  try {
+    await apiFetch(
+      "/api/notifications",
+      {
+        method: "POST",
+
+        headers: {
+          "Content-Type":
+            "application/json"
+        },
+
+        body:
+          JSON.stringify(
+            payload
+          )
+      }
+    );
+
+    closeModal();
+
+    await loadNotifications();
+
+    await navigate(
+      "notifications"
+    );
+
+    showToast(
+      "اعلان ارسال شد."
+    );
+  } catch (error) {
+    showToast(
+      error.message,
+      "error"
+    );
+  }
+}
+async function renderAnalyticsPage() {
+  await loadAnalytics();
+
+  const analytics =
+    state.analytics || {};
+
+  const revenue =
+    Number(
+      analytics.revenue ||
+      0
+    );
+
+  const orders =
+    Number(
+      analytics.orders ||
+      0
+    );
+
+  const users =
+    Number(
+      analytics.users ||
+      0
+    );
+
+  const services =
+    Number(
+      analytics.services ||
+      0
+    );
+
+  $("#content").innerHTML = `
+    <section class="admin-page">
+
+      <div class="page-head">
+
+        <div>
+          <span class="page-kicker">
+            گزارش
+          </span>
+
+          <h2>
+            آمار فروش
+          </h2>
+
+          <p>
+            خلاصه عملکرد فروشگاه
+          </p>
+
+        </div>
+
+      </div>
+
+      <div class="stats-grid">
+
+        <div class="stat-card">
+          <span>
+            درآمد
+          </span>
+
+          <strong>
+            ${formatMoney(
+              revenue
+            )}
+          </strong>
+        </div>
+
+        <div class="stat-card">
+          <span>
+            سفارش‌ها
+          </span>
+
+          <strong>
+            ${orders}
+          </strong>
+        </div>
+
+        <div class="stat-card">
+          <span>
+            کاربران
+          </span>
+
+          <strong>
+            ${users}
+          </strong>
+        </div>
+
+        <div class="stat-card">
+          <span>
+            سرویس‌ها
+          </span>
+
+          <strong>
+            ${services}
+          </strong>
+        </div>
+
+      </div>
+
+      <div class="admin-card">
+
+        <h3>
+          گزارش خلاصه
+        </h3>
+
+        <p>
+          اطلاعات این بخش از سفارش‌ها و کاربران سیستم محاسبه می‌شود.
+        </p>
+
+      </div>
+
+    </section>
+  `;
+}
+async function renderAuditPage() {
+  await loadAudit();
+
+  const audit =
+    Array.isArray(
+      state.audit
+    )
+      ? state.audit
+      : [];
+
+  $("#content").innerHTML = `
+    <section class="admin-page">
+
+      <div class="page-head">
+
+        <div>
+          <span class="page-kicker">
+            امنیت
+          </span>
+
+          <h2>
+            گزارش فعالیت‌ها
+          </h2>
+
+          <p>
+            ثبت عملیات مهم انجام‌شده در پنل
+          </p>
+
+        </div>
+
+      </div>
+
+      <div class="admin-card">
+
+        <div class="table-wrap">
+
+          <table class="admin-table">
+
+            <thead>
+              <tr>
+                <th>زمان</th>
+                <th>کاربر</th>
+                <th>عملیات</th>
+                <th>جزئیات</th>
+              </tr>
+            </thead>
+
+            <tbody>
+
+              ${
+                audit.length
+                  ? audit
+                      .map(
+                        (item) => `
+                          <tr>
+
+                            <td>
+                              ${formatDate(
+                                item.createdAt
+                              )}
+                            </td>
+
+                            <td>
+                              ${escapeHtml(
+                                item.actor ||
+                                item.admin ||
+                                "admin"
+                              )}
+                            </td>
+
+                            <td>
+                              ${escapeHtml(
+                                item.action ||
+                                "-"
+                              )}
+                            </td>
+
+                            <td>
+                              ${escapeHtml(
+                                typeof item.details ===
+                                  "string"
+                                  ? item.details
+                                  : JSON.stringify(
+                                      item.details ||
+                                      {}
+                                    )
+                              )}
+                            </td>
+
+                          </tr>
+                        `
+                      )
+                      .join("")
+                  : `
+                    <tr>
+                      <td colspan="4">
+                        فعالیتی ثبت نشده است.
+                      </td>
+                    </tr>
+                  `
+              }
+
+            </tbody>
+
+          </table>
+
+        </div>
+
+      </div>
+
+    </section>
+  `;
+}
+async function renderSettingsPage() {
+  await loadSettings();
+
+  const settings =
+    state.settings || {};
+
+  $("#content").innerHTML = `
+    <section class="admin-page">
+
+      <div class="page-head">
+
+        <div>
+          <span class="page-kicker">
+            تنظیمات
+          </span>
+
+          <h2>
+            تنظیمات سایت
+          </h2>
+
+          <p>
+            اطلاعات اصلی فروشگاه
+          </p>
+
+        </div>
+
+      </div>
+
+      <div class="admin-card">
+
+        <form id="settingsForm">
+
+          <label>
+            نام سایت
+
+            <input
+              name="siteName"
+              value="${escapeHtml(
+                settings.siteName ||
+                "Sami WireGuard"
+              )}"
+            >
+          </label>
+
+          <label>
+            نام برند
+
+            <input
+              name="brandName"
+              value="${escapeHtml(
+                settings.brandName ||
+                "SAMI / WIREGUARD"
+              )}"
+            >
+          </label>
+
+          <label>
+            شماره کارت
+
+            <input
+              name="cardNumber"
+              value="${escapeHtml(
+                settings.cardNumber ||
+                ""
+              )}"
+              inputmode="numeric"
+            >
+          </label>
+
+          <label>
+            نام صاحب کارت
+
+            <input
+              name="cardName"
+              value="${escapeHtml(
+                settings.cardName ||
+                ""
+              )}"
+            >
+          </label>
+
+          <label>
+            ارز
+
+            <select name="currency">
+
+              <option
+                value="IRR"
+                ${
+                  settings.currency ===
+                  "IRR"
+                    ? "selected"
+                    : ""
+                }
+              >
+                تومان / ریال
+              </option>
+
+              <option
+                value="USD"
+                ${
+                  settings.currency ===
+                  "USD"
+                    ? "selected"
+                    : ""
+                }
+              >
+                USD
+              </option>
+
+              <option
+                value="EUR"
+                ${
+                  settings.currency ===
+                  "EUR"
+                    ? "selected"
+                    : ""
+                }
+              >
+                EUR
+              </option>
+
+            </select>
+
+          </label>
+
+          <label>
+            زبان پیش‌فرض
+
+            <select name="language">
+
+              <option
+                value="fa"
+                ${
+                  settings.language !==
+                  "en"
+                    ? "selected"
+                    : ""
+                }
+              >
+                فارسی
+              </option>
+
+              <option
+                value="en"
+                ${
+                  settings.language ===
+                  "en"
+                    ? "selected"
+                    : ""
+                }
+              >
+                English
+              </option>
+
+            </select>
+
+          </label>
+
+          <button
+            class="admin-button"
+            type="submit"
+          >
+            ذخیره تنظیمات
+          </button>
+
+        </form>
+
+      </div>
+
+    </section>
+  `;
+
+  $("#settingsForm").onsubmit =
+    saveSettings;
+}
+
+async function saveSettings(
+  event
+) {
+  event.preventDefault();
+
+  const form =
+    new FormData(
+      event.target
+    );
+
+  const payload = {
+    siteName:
+      form.get(
+        "siteName"
+      ) || "",
+
+    brandName:
+      form.get(
+        "brandName"
+      ) || "",
+
+    cardNumber:
+      form.get(
+        "cardNumber"
+      ) || "",
+
+    cardName:
+      form.get(
+        "cardName"
+      ) || "",
+
+    currency:
+      form.get(
+        "currency"
+      ) || "IRR",
+
+    language:
+      form.get(
+        "language"
+      ) || "fa"
+  };
+
+  try {
+    await apiFetch(
+      "/api/settings",
+      {
+        method: "PUT",
+
+        headers: {
+          "Content-Type":
+            "application/json"
+        },
+
+        body:
+          JSON.stringify(
+            payload
+          )
+      }
+    );
+
+    await loadSettings();
+
+    await navigate(
+      "settings"
+    );
+
+    showToast(
+      "تنظیمات ذخیره شد."
+    );
+  } catch (error) {
+    showToast(
+      error.message,
+      "error"
+    );
+  }
+}
+async function renderBackupPage() {
+  $("#content").innerHTML = `
+    <section class="admin-page">
+
+      <div class="page-head">
+
+        <div>
+          <span class="page-kicker">
+            امنیت
+          </span>
+
+          <h2>
+            Backup
+          </h2>
+
+          <p>
+            دریافت نسخه پشتیبان از اطلاعات فروشگاه
+          </p>
+
+        </div>
+
+      </div>
+
+      <div class="admin-card">
+
+        <h3>
+          پشتیبان‌گیری
+        </h3>
+
+        <p>
+          قبل از تغییرات مهم، از اطلاعات سیستم نسخه پشتیبان بگیرید.
+        </p>
+
+        <button
+          class="admin-button"
+          onclick="downloadBackup()"
+        >
+          دریافت Backup
+        </button>
+
+      </div>
+
+    </section>
+  `;
+}
+
+async function downloadBackup() {
+  try {
+    const response =
+      await fetch(
+        "/api/backup",
+        {
+          headers: {
+            Authorization:
+              `Bearer ${state.token}`
+          }
+        }
+      );
+
+    if (!response.ok) {
+      throw new Error(
+        "دریافت Backup انجام نشد."
+      );
+    }
+
+    const blob =
+      await response.blob();
+
+    const url =
+      URL.createObjectURL(
+        blob
+      );
+
+    const link =
+      document.createElement(
+        "a"
+      );
+
+    link.href =
+      url;
+
+    link.download =
+      `sami-wireguard-backup-${Date.now()}.json`;
+
+    document.body.appendChild(
+      link
+    );
+
+    link.click();
+
+    link.remove();
+
+    URL.revokeObjectURL(
+      url
+    );
+
+    showToast(
+      "Backup آماده شد."
+    );
+  } catch (error) {
+    showToast(
+      error.message,
+      "error"
+    );
+  }
+}
+async function navigate(
+  page
+) {
+  state.page =
+    page;
+
+  const titles = {
+    dashboard:
+      "داشبورد",
+
+    categories:
+      "دسته‌بندی‌ها",
+
+    products:
+      "محصولات",
+
+    orders:
+      "سفارش‌ها",
+
+    customers:
+      "مشتریان",
+
+    services:
+      "سرویس‌ها",
+
+    tickets:
+      "تیکت‌ها",
+
+    coupons:
+      "کدهای تخفیف",
+
+    "flash-sale":
+      "Flash Sale",
+
+    wheel:
+      "گردونه شانس",
+
+    servers:
+      "سرورها",
+
+    telegram:
+      "Telegram Bot",
+
+    notifications:
+      "اعلان‌ها",
+
+    analytics:
+      "آمار",
+
+    audit:
+      "گزارش فعالیت",
+
+    settings:
+      "تنظیمات",
+
+    backup:
+      "Backup"
+  };
+
+  const title =
+    titles[page] ||
+    "داشبورد";
+
+  $("#pageTitle").textContent =
+    title;
+
+  document
+    .querySelectorAll(
+      "#adminMenu button"
+    )
+    .forEach(
+      (button) => {
+        button.classList.toggle(
+          "active",
+          button.dataset.page ===
+            page
+        );
+      }
+    );
+
+  try {
+    switch (page) {
+
+      case "dashboard":
+        await renderDashboardPage();
+        break;
+
+      case "categories":
+        await renderCategoriesPage();
+        break;
+
+      case "products":
+        await renderProductsPage();
+        break;
+
+      case "orders":
+        await renderOrdersPage();
+        break;
+
+      case "customers":
+        await renderCustomersPage();
+        break;
+
+      case "services":
+        await renderServicesPage();
+        break;
+
+      case "tickets":
+        await renderTicketsPage();
+        break;
+
+      case "coupons":
+        await renderCouponsPage();
+        break;
+
+      case "flash-sale":
+        await renderFlashSalePage();
+        break;
+
+      case "wheel":
+        await renderWheelPage();
+        break;
+
+      case "servers":
+        await renderServersPage();
+        break;
+
+      case "telegram":
+        await renderTelegramPage();
+        break;
+
+      case "notifications":
+        await renderNotificationsPage();
+        break;
+
+      case "analytics":
+        await renderAnalyticsPage();
+        break;
+
+      case "audit":
+        await renderAuditPage();
+        break;
+
+      case "settings":
+        await renderSettingsPage();
+        break;
+
+      case "backup":
+        await renderBackupPage();
+        break;
+
+      default:
+        await renderDashboardPage();
+        break;
+    }
+
+  } catch (error) {
+
+    console.error(
+      error
+    );
+
+    showToast(
+      error.message ||
+      "خطا در بارگذاری صفحه",
+      "error"
+    );
+  }
+}
+async function refreshCurrentPage() {
+  await navigate(
+    state.page ||
+    "dashboard"
+  );
+}
+
+function setupMobileSidebar() {
+  const button =
+    $("#mobileMenuButton");
+
+  const sidebar =
+    $("#adminSidebar");
+
+  if (
+    !button ||
+    !sidebar
+  ) {
+    return;
+  }
+
+  button.onclick =
+    () => {
+      sidebar.classList.toggle(
+        "open"
+      );
+    };
+
+  document.addEventListener(
+    "click",
+    (event) => {
+
+      if (
+        window.innerWidth >
+        900
+      ) {
+        return;
+      }
+
+      if (
+        !sidebar.contains(
+          event.target
+        ) &&
+        !button.contains(
+          event.target
+        )
+      ) {
+        sidebar.classList.remove(
+          "open"
+        );
+      }
+
+    }
+  );
+}
+function setupAdminMenu() {
+  document
+    .querySelectorAll(
+      "#adminMenu button[data-page]"
+    )
+    .forEach(
+      (button) => {
+
+        button.addEventListener(
+          "click",
+          async () => {
+
+            const page =
+              button.dataset.page;
+
+            const sidebar =
+              $("#adminSidebar");
+
+            if (
+              sidebar &&
+              window.innerWidth <=
+                900
+            ) {
+              sidebar.classList.remove(
+                "open"
+              );
+            }
+
+            await navigate(
+              page
+            );
+          }
+        );
+
+      }
+    );
+}
+function openModal(
+  title,
+  content
+) {
+  const modal =
+    $("#adminModal");
+
+  if (!modal) {
+    return;
+  }
+
+  $("#modalTitle")
+    .textContent =
+    title || "";
+
+  $("#modalContent")
+    .innerHTML =
+    content || "";
+
+  modal.classList.add(
+    "open"
+  );
+}
+
+function closeModal() {
+  const modal =
+    $("#adminModal");
+
+  if (!modal) {
+    return;
+  }
+
+  modal.classList.remove(
+    "open"
+  );
+
+  $("#modalContent")
+    .innerHTML =
+    "";
+}
+
+function showToast(
+  message,
+  type = "success"
+) {
+  const toast =
+    $("#adminToast");
+
+  if (!toast) {
+    return;
+  }
+
+  toast.textContent =
+    message || "";
+
+  toast.className =
+    "admin-toast " +
+    type;
+
+  toast.classList.add(
+    "show"
+  );
+
+  clearTimeout(
+    showToast.timer
+  );
+
+  showToast.timer =
+    setTimeout(
+      () => {
+        toast.classList.remove(
+          "show"
+        );
+      },
+      3500
+    );
+}
+function logoutAdmin() {
+  localStorage.removeItem(
+    ADMIN_TOKEN_KEY
+  );
+
+  state.token =
+    "";
+
+  state.admin =
+    null;
+
+  window.location.href =
+    "/admin";
+}
+function bindAdminEvents() {
+  const modalClose =
+    $("#modalClose");
+
+  if (modalClose) {
+    modalClose.onclick =
+      closeModal;
+  }
+
+  const refreshButton =
+    $("#refreshButton");
+
+  if (refreshButton) {
+    refreshButton.onclick =
+      refreshCurrentPage;
+  }
+
+  const loginForm =
+    $("#loginForm");
+
+  if (loginForm) {
+    loginForm.onsubmit =
+      loginAdmin;
+  }
+
+  const modal =
+    $("#adminModal");
+
+  if (modal) {
+    modal.addEventListener(
+      "click",
+      (event) => {
+
+        if (
+          event.target ===
+          modal
+        ) {
+          closeModal();
+        }
+
+      }
+    );
+  }
+
+  document.addEventListener(
+    "keydown",
+    (event) => {
+
+      if (
+        event.key ===
+        "Escape"
+      ) {
+        closeModal();
+      }
+
+    }
+  );
+}
+async function initAdmin() {
+  try {
+
+    const token =
+      localStorage.getItem(
+        ADMIN_TOKEN_KEY
+      );
+
+    if (!token) {
+
+      showLoginScreen();
+
+      return;
+    }
+
+    state.token =
+      token;
+
+    await loadAdminSession();
+
+    showAdminApp();
+
+    setupAdminMenu();
+
+    setupMobileSidebar();
+
+    bindAdminEvents();
+
+    await loadAllData();
+
+    await navigate(
+      "dashboard"
+    );
+
+  } catch (error) {
+
+    console.error(
+      error
+    );
+
+    localStorage.removeItem(
+      ADMIN_TOKEN_KEY
+    );
+
+    state.token =
+      "";
+
+    showLoginScreen();
+
+    if (
+      error.message
+    ) {
+      showToast(
+        error.message,
+        "error"
+      );
+    }
+  }
+}
+
+function showLoginScreen() {
+  const login =
+    $("#loginScreen");
+
+  const app =
+    $("#adminApp");
+
+  if (login) {
+    login.style.display =
+      "flex";
+  }
+
+  if (app) {
+    app.style.display =
+      "none";
+  }
+}
+
+function showAdminApp() {
+  const login =
+    $("#loginScreen");
+
+  const app =
+    $("#adminApp");
+
+  if (login) {
+    login.style.display =
+      "none";
+  }
+
+  if (app) {
+    app.style.display =
+      "flex";
+  }
+}
+
+document.addEventListener(
+  "DOMContentLoaded",
+  initAdmin
+);
+window.navigate =
+  navigate;
+
+window.openModal =
+  openModal;
+
+window.closeModal =
+  closeModal;
+
+window.showToast =
+  showToast;
+
+window.openProductModal =
+  openProductModal;
+
+window.openOrderModal =
+  openOrderModal;
+
+window.openTicketModal =
+  openTicketModal;
+
+window.openCouponModal =
+  openCouponModal;
+
+window.deleteCoupon =
+  deleteCoupon;
+
+window.openWheelPrizeModal =
+  openWheelPrizeModal;
+
+window.openServerModal =
+  openServerModal;
+
+window.openNotificationModal =
+  openNotificationModal;
+
+window.viewReceipt =
+  viewReceipt;
+
+window.downloadBackup =
+  downloadBackup;
+
+window.logoutAdmin =
+  logoutAdmin;
+
+window.refreshCurrentPage =
+  refreshCurrentPage;
