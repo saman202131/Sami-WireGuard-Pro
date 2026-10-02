@@ -4,21 +4,26 @@ const express = require("express");
 const path = require("path");
 const fs = require("fs");
 const crypto = require("crypto");
-const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
 const multer = require("multer");
+const QRCode = require("qrcode");
+const helmet = require("helmet");
+const rateLimit = require("express-rate-limit");
 
 const app = express();
 
 const PORT = Number(process.env.PORT || 3000);
 const ROOT = __dirname;
+
 const DATA_DIR = path.join(ROOT, "data");
 const UPLOAD_DIR = path.join(DATA_DIR, "uploads");
 const DB_FILE = path.join(DATA_DIR, "store.json");
 
+const NODE_ENV = process.env.NODE_ENV || "development";
+
 const JWT_SECRET =
-  process.env.JWT_SECRET ||
-  "CHANGE_THIS_SECRET_BEFORE_PRODUCTION";
+  process.env.JWT_SECRET || "CHANGE_THIS_TO_A_LONG_RANDOM_SECRET";
 
 const ADMIN_USERNAME =
   process.env.ADMIN_USERNAME || "admin";
@@ -26,76 +31,91 @@ const ADMIN_USERNAME =
 const ADMIN_PASSWORD =
   process.env.ADMIN_PASSWORD || "change-this-password";
 
-const MAX_UPLOAD_SIZE =
-  Number(process.env.MAX_UPLOAD_SIZE || 8 * 1024 * 1024);
-
-const isProduction = process.env.NODE_ENV === "production";
-
-if (!fs.existsSync(DATA_DIR)) {
-  fs.mkdirSync(DATA_DIR, { recursive: true });
-}
-
-if (!fs.existsSync(UPLOAD_DIR)) {
-  fs.mkdirSync(UPLOAD_DIR, { recursive: true });
-}
-
-/* =========================================================
-   DEFAULT DATABASE
-   ========================================================= */
+const MAX_UPLOAD_MB =
+  Number(process.env.MAX_RECEIPT_MB || 8);
 
 const DEFAULTS = {
   settings: {
-    siteName: "Sami WireGuard",
-    siteDescription:
-      "سرویس اینترنت پایدار، سریع و مطمئن با WireGuard",
+    siteName: "SAMI VPN",
+    siteShortName: "SAMI",
     supportUsername: "saman_s87",
     botUsername: "sami91928bot",
     channelUsername: "SamiWireGuard",
+
+    currency: "IRT",
+    defaultLanguage: "fa",
+    supportedLanguages: ["fa", "en"],
+
     cardNumber: "",
-    cardName: "",
-    telegramEnabled: true,
-    smsEnabled: false
+    cardHolder: "",
+    paymentInstructions:
+      "پس از واریز، تصویر رسید پرداخت را ارسال کنید.",
+
+    telegramEnabled: false,
+    telegramBotUsername: "",
+    telegramConnectedAt: null,
+
+    smsEnabled: false,
+    smsProvider: "",
+    smsSender: "",
+
+    maintenanceMode: false,
+
+    siteTitle: "SAMI VPN",
+    siteDescription:
+      "Premium VPN, WireGuard and DNS services."
   },
 
   categories: [
     {
-      id: "wg",
+      id: "cat-wireguard",
       name: "WireGuard",
       slug: "wireguard",
+      description: "Fast and modern WireGuard VPN services.",
       active: true,
       sort: 1
     },
     {
-      id: "dns",
+      id: "cat-dns",
       name: "DNS",
       slug: "dns",
+      description: "Secure and optimized DNS services.",
       active: true,
       sort: 2
     },
     {
-      id: "v2ray",
-      name: "V2Ray",
-      slug: "v2ray",
+      id: "cat-vless",
+      name: "VLESS",
+      slug: "vless",
+      description: "VLESS services.",
       active: true,
       sort: 3
+    },
+    {
+      id: "cat-trojan",
+      name: "Trojan",
+      slug: "trojan",
+      description: "Trojan services.",
+      active: true,
+      sort: 4
+    },
+    {
+      id: "cat-openvpn",
+      name: "OpenVPN",
+      slug: "openvpn",
+      description: "OpenVPN services.",
+      active: true,
+      sort: 5
+    },
+    {
+      id: "cat-special",
+      name: "Special Services",
+      slug: "special",
+      description: "Gaming, streaming and dedicated services.",
+      active: true,
+      sort: 6
     }
   ],
-
-  flashSale: {
-    enabled: false,
-    title: "فروش ویژه",
-    description: "",
-    discountPercent: 0,
-    endsAt: null,
-    productIds: []
-  },
-
-  wheel: {
-    enabled: false,
-    title: "گردونه شانس",
-    description: "",
-    spinsPerDay: 1
-  },
 
   products: [],
 
@@ -105,93 +125,185 @@ const DEFAULTS = {
 
   services: [],
 
+  devices: [],
+
   tickets: [],
 
   coupons: [],
 
   notifications: [],
 
-  admins: [],
+  referrals: [],
 
-  audit: [],
+  points: [],
+
+  missions: [],
+
+  rewards: [],
+
+  spins: [],
+
+  wheelPrizes: [
+    {
+      id: "prize-5",
+      title: "5% Discount",
+      type: "coupon",
+      value: 5,
+      probability: 35,
+      active: true
+    },
+    {
+      id: "prize-10",
+      title: "10% Discount",
+      type: "coupon",
+      value: 10,
+      probability: 25,
+      active: true
+    },
+    {
+      id: "prize-20",
+      title: "20% Discount",
+      type: "coupon",
+      value: 20,
+      probability: 10,
+      active: true
+    },
+    {
+      id: "prize-day",
+      title: "1 Free Day",
+      type: "free_days",
+      value: 1,
+      probability: 10,
+      active: true
+    },
+    {
+      id: "prize-volume",
+      title: "Extra Traffic",
+      type: "traffic",
+      value: 10,
+      probability: 10,
+      active: true
+    },
+    {
+      id: "prize-again",
+      title: "Try Again",
+      type: "nothing",
+      value: 0,
+      probability: 10,
+      active: true
+    }
+  ],
+
+  wheel: {
+    enabled: true,
+    title: "Lucky Wheel",
+    description: "Spin the wheel and win a reward.",
+    spinsPerDay: 1
+  },
+
+  flashSale: {
+    enabled: false,
+    title: "Flash Sale",
+    description: "",
+    discountPercent: 0,
+    startsAt: null,
+    endsAt: null,
+    productIds: []
+  },
 
   servers: [],
 
   transactions: [],
 
-  missions: [],
+  otpRequests: [],
 
-  referrals: [],
+  admins: [],
 
-  wheelPrizes: [],
-
-  spins: [],
-
-  otpRequests: []
+  audit: []
 };
 
-/* =========================================================
-   DATABASE
-   ========================================================= */
+function ensureDirectories() {
+  fs.mkdirSync(DATA_DIR, { recursive: true });
+  fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+}
+
+function clone(value) {
+  return JSON.parse(JSON.stringify(value));
+}
 
 function readDB() {
+  ensureDirectories();
+
   if (!fs.existsSync(DB_FILE)) {
-    saveDB(DEFAULTS);
-    return structuredClone(DEFAULTS);
+    fs.writeFileSync(
+      DB_FILE,
+      JSON.stringify(DEFAULTS, null, 2),
+      "utf8"
+    );
+
+    return clone(DEFAULTS);
   }
 
+  let db;
+
   try {
-    const raw = fs.readFileSync(DB_FILE, "utf8");
-    const parsed = JSON.parse(raw);
-
-    let changed = false;
-
-    for (const [key, value] of Object.entries(DEFAULTS)) {
-      if (parsed[key] === undefined) {
-        parsed[key] = structuredClone(value);
-        changed = true;
-      }
-    }
-
-    if (changed) {
-      saveDB(parsed);
-    }
-
-    return parsed;
+    db = JSON.parse(
+      fs.readFileSync(DB_FILE, "utf8")
+    );
   } catch (error) {
     console.error("Database read error:", error);
 
-    const backupName = `store-broken-${Date.now()}.json`;
-    const backupPath = path.join(DATA_DIR, backupName);
-
-    try {
-      fs.copyFileSync(DB_FILE, backupPath);
-    } catch {}
-
-    saveDB(DEFAULTS);
-
-    return structuredClone(DEFAULTS);
+    db = clone(DEFAULTS);
   }
+
+  let changed = false;
+
+  for (const key of Object.keys(DEFAULTS)) {
+    if (
+      db[key] === undefined ||
+      db[key] === null
+    ) {
+      db[key] = clone(DEFAULTS[key]);
+      changed = true;
+    }
+  }
+
+  if (changed) {
+    saveDB(db);
+  }
+
+  return db;
 }
 
 function saveDB(db) {
+  ensureDirectories();
+
+  const tempFile = `${DB_FILE}.tmp`;
+
   fs.writeFileSync(
-    DB_FILE,
+    tempFile,
     JSON.stringify(db, null, 2),
     "utf8"
   );
+
+  fs.renameSync(tempFile, DB_FILE);
 }
 
-/* =========================================================
-   HELPERS
-   ========================================================= */
+let db = readDB();
 
-function makeId(prefix = "") {
-  return (
-    prefix +
-    crypto.randomBytes(8).toString("hex") +
-    Date.now().toString(36)
-  );
+function reloadDB() {
+  db = readDB();
+  return db;
+}
+
+function persist() {
+  saveDB(db);
+}
+
+function makeId(prefix = "id") {
+  return `${prefix}_${Date.now().toString(36)}_${crypto
+    .randomBytes(4)
+    .toString("hex")}`;
 }
 
 function now() {
@@ -205,47 +317,50 @@ function normalizePhone(phone) {
 
   value = value.replace(/[^\d+]/g, "");
 
-  if (value.startsWith("0098")) {
-    value = "+98" + value.slice(4);
-  }
-
-  if (value.startsWith("98") && !value.startsWith("+98")) {
-    value = "+" + value;
+  if (value.startsWith("00")) {
+    value = `+${value.slice(2)}`;
   }
 
   if (value.startsWith("09")) {
-    value = "+98" + value.slice(1);
+    value = `+98${value.slice(1)}`;
+  }
+
+  if (/^9\d{9}$/.test(value)) {
+    value = `+98${value}`;
   }
 
   return value;
 }
 
 function validPhone(phone) {
-  return /^\+98\d{10}$/.test(phone);
+  const value = normalizePhone(phone);
+
+  return /^\+\d{8,15}$/.test(value);
 }
 
 function safeNumber(value, fallback = 0) {
   const number = Number(value);
-  return Number.isFinite(number) ? number : fallback;
+
+  return Number.isFinite(number)
+    ? number
+    : fallback;
 }
 
-function audit(db, req, action, details = {}) {
-  db.audit.unshift({
-    id: makeId("audit_"),
-    action,
-    adminUsername: req.admin?.username || null,
-    userId: req.user?.id || null,
-    ip:
-      req.headers["x-forwarded-for"] ||
-      req.socket.remoteAddress ||
-      null,
-    details,
-    createdAt: now()
-  });
-
-  if (db.audit.length > 1000) {
-    db.audit.length = 1000;
+function safeText(value, fallback = "") {
+  if (value === undefined || value === null) {
+    return fallback;
   }
+
+  return String(value).trim();
+}
+
+function bool(value) {
+  return (
+    value === true ||
+    value === "true" ||
+    value === 1 ||
+    value === "1"
+  );
 }
 
 function publicUser(user) {
@@ -255,8 +370,14 @@ function publicUser(user) {
     id: user.id,
     phone: user.phone,
     name: user.name || "",
-    role: user.role || "customer",
-    createdAt: user.createdAt
+    email: user.email || "",
+    language: user.language || "fa",
+    role: user.role || "user",
+    points: safeNumber(user.points),
+    referralCode: user.referralCode || "",
+    active: user.active !== false,
+    createdAt: user.createdAt,
+    updatedAt: user.updatedAt
   };
 }
 
@@ -264,9 +385,8 @@ function signUserToken(user) {
   return jwt.sign(
     {
       type: "user",
-      id: user.id,
-      phone: user.phone,
-      role: user.role || "customer"
+      sub: user.id,
+      role: user.role || "user"
     },
     JWT_SECRET,
     {
@@ -279,7 +399,7 @@ function signAdminToken(admin) {
   return jwt.sign(
     {
       type: "admin",
-      username: admin.username,
+      sub: admin.id,
       role: admin.role || "admin"
     },
     JWT_SECRET,
@@ -289,13 +409,208 @@ function signAdminToken(admin) {
   );
 }
 
-/* =========================================================
-   MIDDLEWARE
-   ========================================================= */
+function getToken(req) {
+  const header = req.headers.authorization || "";
+
+  if (!header.startsWith("Bearer ")) {
+    return null;
+  }
+
+  return header.slice(7).trim();
+}
+
+function verifyToken(req) {
+  const token = getToken(req);
+
+  if (!token) return null;
+
+  try {
+    return jwt.verify(token, JWT_SECRET);
+  } catch {
+    return null;
+  }
+}
+
+function audit(action, actor, details = {}) {
+  db.audit.unshift({
+    id: makeId("audit"),
+    action,
+    actor: actor
+      ? {
+          id: actor.id,
+          type: actor.type || "unknown",
+          username: actor.username || "",
+          role: actor.role || ""
+        }
+      : null,
+    details,
+    createdAt: now()
+  });
+
+  if (db.audit.length > 2000) {
+    db.audit = db.audit.slice(0, 2000);
+  }
+
+  persist();
+}
+
+function userAuth(req, res, next) {
+  const payload = verifyToken(req);
+
+  if (
+    !payload ||
+    payload.type !== "user"
+  ) {
+    return res.status(401).json({
+      ok: false,
+      error: "Authentication required."
+    });
+  }
+
+  const user = db.users.find(
+    (item) => item.id === payload.sub
+  );
+
+  if (!user || user.active === false) {
+    return res.status(401).json({
+      ok: false,
+      error: "User account is unavailable."
+    });
+  }
+
+  req.user = user;
+
+  next();
+}
+
+function adminAuth(req, res, next) {
+  const payload = verifyToken(req);
+
+  if (
+    !payload ||
+    payload.type !== "admin"
+  ) {
+    return res.status(401).json({
+      ok: false,
+      error: "Admin authentication required."
+    });
+  }
+
+  const admin = db.admins.find(
+    (item) => item.id === payload.sub
+  );
+
+  if (!admin || admin.active === false) {
+    return res.status(401).json({
+      ok: false,
+      error: "Admin account is unavailable."
+    });
+  }
+
+  req.admin = admin;
+
+  next();
+}
+
+function ownerAuth(req, res, next) {
+  adminAuth(req, res, () => {
+    if (req.admin.role !== "owner") {
+      return res.status(403).json({
+        ok: false,
+        error: "Owner permission required."
+      });
+    }
+
+    next();
+  });
+}
+
+function roleAuth(...allowedRoles) {
+  return (req, res, next) => {
+    if (!req.admin) {
+      return res.status(401).json({
+        ok: false,
+        error: "Authentication required."
+      });
+    }
+
+    if (
+      !allowedRoles.includes(
+        req.admin.role
+      )
+    ) {
+      return res.status(403).json({
+        ok: false,
+        error: "Insufficient permissions."
+      });
+    }
+
+    next();
+  };
+}
+
+function ensureInitialAdmin() {
+  const existing = db.admins.find(
+    (admin) =>
+      admin.username === ADMIN_USERNAME
+  );
+
+  if (existing) return;
+
+  const passwordHash =
+    bcrypt.hashSync(
+      ADMIN_PASSWORD,
+      12
+    );
+
+  db.admins.push({
+    id: makeId("admin"),
+    username: ADMIN_USERNAME,
+    passwordHash,
+    name: "Owner",
+    role: "owner",
+    active: true,
+    createdAt: now(),
+    updatedAt: now()
+  });
+
+  persist();
+
+  console.log(
+    `Initial admin created: ${ADMIN_USERNAME}`
+  );
+
+  if (
+    ADMIN_PASSWORD ===
+    "change-this-password"
+  ) {
+    console.warn(
+      "WARNING: Change ADMIN_PASSWORD in .env before production."
+    );
+  }
+}
+
+ensureInitialAdmin();
 
 app.disable("x-powered-by");
 
-app.use(express.json({ limit: "2mb" }));
+if (NODE_ENV === "production") {
+  app.set("trust proxy", 1);
+}
+
+app.use(
+  helmet({
+    crossOriginResourcePolicy: {
+      policy: "same-site"
+    }
+  })
+);
+
+app.use(
+  express.json({
+    limit: "2mb"
+  })
+);
 
 app.use(
   express.urlencoded({
@@ -304,730 +619,582 @@ app.use(
   })
 );
 
-/* =========================================================
-   UPLOADS
-   ========================================================= */
-
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, UPLOAD_DIR);
-  },
-
-  filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname || "").toLowerCase();
-
-    const safeExt = [
-      ".jpg",
-      ".jpeg",
-      ".png",
-      ".webp",
-      ".pdf"
-    ].includes(ext)
-      ? ext
-      : ".bin";
-
-    cb(
-      null,
-      `${Date.now()}-${crypto
-        .randomBytes(6)
-        .toString("hex")}${safeExt}`
-    );
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 500,
+  standardHeaders: "draft-8",
+  legacyHeaders: false,
+  message: {
+    ok: false,
+    error: "Too many requests. Please try again later."
   }
 });
 
-const upload = multer({
-  storage,
-
-  limits: {
-    fileSize: MAX_UPLOAD_SIZE
-  },
-
-  fileFilter: (req, file, cb) => {
-    const allowed = [
-      "image/jpeg",
-      "image/png",
-      "image/webp",
-      "application/pdf"
-    ];
-
-    if (!allowed.includes(file.mimetype)) {
-      return cb(
-        new Error(
-          "فرمت فایل مجاز نیست. فقط JPG، PNG، WEBP و PDF."
-        )
-      );
-    }
-
-    cb(null, true);
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 25,
+  standardHeaders: "draft-8",
+  legacyHeaders: false,
+  message: {
+    ok: false,
+    error: "Too many authentication attempts."
   }
 });
 
-/*
- * Receipt files are intentionally served only through
- * the authenticated receipt route below.
- *
- * We do NOT expose data/uploads as a public directory.
- */
-
-/* =========================================================
-   AUTH MIDDLEWARE
-   ========================================================= */
-
-function getBearerToken(req) {
-  const header = req.headers.authorization || "";
-
-  if (!header.startsWith("Bearer ")) {
-    return null;
-  }
-
-  return header.slice(7);
-}
-
-function auth(req, res, next) {
-  const token = getBearerToken(req);
-
-  if (!token) {
-    return res.status(401).json({
-      ok: false,
-      message: "احراز هویت لازم است."
-    });
-  }
-
-  try {
-    const payload = jwt.verify(token, JWT_SECRET);
-
-    if (payload.type !== "user") {
-      return res.status(401).json({
-        ok: false,
-        message: "توکن کاربر معتبر نیست."
-      });
-    }
-
-    const db = readDB();
-
-    const user = db.users.find(
-      (item) => item.id === payload.id
-    );
-
-    if (!user) {
-      return res.status(401).json({
-        ok: false,
-        message: "کاربر پیدا نشد."
-      });
-    }
-
-    req.user = user;
-
-    next();
-  } catch {
-    return res.status(401).json({
-      ok: false,
-      message: "نشست شما منقضی شده است."
-    });
-  }
-}
-
-function adminAuth(req, res, next) {
-  const token = getBearerToken(req);
-
-  if (!token) {
-    return res.status(401).json({
-      ok: false,
-      message: "ورود مدیر لازم است."
-    });
-  }
-
-  try {
-    const payload = jwt.verify(token, JWT_SECRET);
-
-    if (payload.type !== "admin") {
-      return res.status(401).json({
-        ok: false,
-        message: "توکن مدیر معتبر نیست."
-      });
-    }
-
-    req.admin = payload;
-
-    next();
-  } catch {
-    return res.status(401).json({
-      ok: false,
-      message: "نشست مدیر منقضی شده است."
-    });
-  }
-}
-
-function ownerAuth(req, res, next) {
-  if (
-    !req.admin ||
-    !["owner", "superadmin"].includes(req.admin.role)
-  ) {
-    return res.status(403).json({
-      ok: false,
-      message: "دسترسی مالک لازم است."
-    });
-  }
-
-  next();
-}
+app.use("/api", apiLimiter);
 
 /* =========================================================
    HEALTH
-   ========================================================= */
+========================================================= */
 
 app.get("/api/health", (req, res) => {
   res.json({
     ok: true,
-    service: "sami-wireguard",
+    service: "SAMI VPN",
+    environment: NODE_ENV,
     time: now()
   });
 });
 
 /* =========================================================
-   AUTH — ADMIN
-   ========================================================= */
+   AUTH
+========================================================= */
 
-app.post("/api/login", async (req, res) => {
-  try {
-    const username = String(
-      req.body.username || ""
-    ).trim();
+app.post(
+  "/api/login",
+  authLimiter,
+  async (req, res) => {
+    const username =
+      safeText(req.body.username);
 
-    const password = String(
-      req.body.password || ""
-    );
+    const password =
+      safeText(req.body.password);
 
     if (!username || !password) {
       return res.status(400).json({
         ok: false,
-        message: "نام کاربری و رمز عبور را وارد کنید."
+        error: "Username and password are required."
       });
     }
 
-    /*
-     * Environment admin has priority.
-     */
-    if (
-      username === ADMIN_USERNAME &&
-      password === ADMIN_PASSWORD
-    ) {
-      const admin = {
-        username,
-        role: "owner"
-      };
-
-      const token = signAdminToken(admin);
-
-      return res.json({
-        ok: true,
-        token,
-        admin
-      });
-    }
-
-    const db = readDB();
-
-    const admin = db.admins.find(
-      (item) => item.username === username && item.active !== false
+    let admin = db.admins.find(
+      (item) =>
+        item.username === username &&
+        item.active !== false
     );
+
+    if (!admin && username === ADMIN_USERNAME) {
+      const passwordMatches =
+        password === ADMIN_PASSWORD;
+
+      if (passwordMatches) {
+        admin = {
+          id: "env-owner",
+          username: ADMIN_USERNAME,
+          name: "Owner",
+          role: "owner",
+          active: true
+        };
+      }
+    }
 
     if (!admin) {
       return res.status(401).json({
         ok: false,
-        message: "نام کاربری یا رمز عبور اشتباه است."
+        error: "Invalid credentials."
       });
     }
 
-    const matched = await bcrypt.compare(
-      password,
-      admin.passwordHash
-    );
+    let valid = false;
 
-    if (!matched) {
+    if (admin.passwordHash) {
+      valid = await bcrypt.compare(
+        password,
+        admin.passwordHash
+      );
+    } else if (
+      admin.username === ADMIN_USERNAME
+    ) {
+      valid =
+        password === ADMIN_PASSWORD;
+    }
+
+    if (!valid) {
       return res.status(401).json({
         ok: false,
-        message: "نام کاربری یا رمز عبور اشتباه است."
+        error: "Invalid credentials."
       });
     }
 
-    const token = signAdminToken(admin);
+    const token =
+      signAdminToken(admin);
 
-    audit(db, req, "admin_login", {
-      username
-    });
-
-    saveDB(db);
+    audit(
+      "admin_login",
+      {
+        id: admin.id,
+        type: "admin",
+        username: admin.username,
+        role: admin.role
+      }
+    );
 
     res.json({
       ok: true,
       token,
       admin: {
+        id: admin.id,
         username: admin.username,
-        role: admin.role || "admin"
+        name: admin.name,
+        role: admin.role
       }
     });
-  } catch (error) {
-    console.error(error);
+  }
+);
 
-    res.status(500).json({
-      ok: false,
-      message: "خطا در ورود مدیر."
+app.get(
+  "/api/admin/me",
+  adminAuth,
+  (req, res) => {
+    res.json({
+      ok: true,
+      admin: {
+        id: req.admin.id,
+        username: req.admin.username,
+        name: req.admin.name,
+        role: req.admin.role
+      }
     });
   }
-});
+);
 
-app.get("/api/admin/me", adminAuth, (req, res) => {
-  res.json({
-    ok: true,
-    admin: {
-      username: req.admin.username,
-      role: req.admin.role || "admin"
-    }
-  });
-});
-
-/* =========================================================
-   AUTH — SMS OTP
-   ========================================================= */
-
-app.post("/api/auth/request-otp", async (req, res) => {
-  try {
-    const phone = normalizePhone(req.body.phone);
+app.post(
+  "/api/auth/request-otp",
+  authLimiter,
+  (req, res) => {
+    const phone =
+      normalizePhone(req.body.phone);
 
     if (!validPhone(phone)) {
       return res.status(400).json({
         ok: false,
-        message: "شماره موبایل معتبر نیست."
+        error: "Invalid phone number."
       });
     }
 
-    const db = readDB();
-
-    const recent = db.otpRequests.find(
-      (item) =>
-        item.phone === phone &&
-        Date.now() - new Date(item.createdAt).getTime() <
-          60 * 1000
-    );
+    const recent =
+      db.otpRequests.find(
+        (item) =>
+          item.phone === phone &&
+          Date.now() -
+            new Date(item.createdAt).getTime() <
+            60 * 1000
+      );
 
     if (recent) {
       return res.status(429).json({
         ok: false,
-        message:
-          "لطفاً قبل از درخواست کد جدید کمی صبر کنید."
+        error: "Please wait before requesting another code."
       });
     }
 
-    const code = String(
-      Math.floor(100000 + Math.random() * 900000)
-    );
+    const code =
+      String(
+        crypto.randomInt(
+          100000,
+          1000000
+        )
+      );
 
-    const otp = {
-      id: makeId("otp_"),
+    const request = {
+      id: makeId("otp"),
       phone,
-      code,
-      createdAt: now(),
-      expiresAt: new Date(
-        Date.now() + 5 * 60 * 1000
-      ).toISOString(),
-      verified: false,
-      attempts: 0
+      codeHash: crypto
+        .createHash("sha256")
+        .update(code)
+        .digest("hex"),
+      attempts: 0,
+      expiresAt:
+        Date.now() +
+        5 * 60 * 1000,
+      createdAt: now()
     };
 
-    db.otpRequests = db.otpRequests.filter(
-      (item) =>
-        item.phone !== phone ||
-        Date.now() -
-          new Date(item.createdAt).getTime() <
-          10 * 60 * 1000
-    );
+    db.otpRequests.push(request);
 
-    db.otpRequests.push(otp);
+    db.otpRequests =
+      db.otpRequests.filter(
+        (item) =>
+          item.expiresAt > Date.now()
+      );
 
-    saveDB(db);
+    persist();
 
     /*
-     * IMPORTANT:
-     * In production the code must be sent through a real SMS
-     * provider and MUST NOT be returned to the browser.
-     */
+      Production:
+      Connect your SMS provider here.
+
+      Development:
+      Returning developmentCode is allowed only
+      outside production.
+    */
 
     const response = {
       ok: true,
-      message: "کد تأیید ارسال شد."
+      message:
+        "Verification code sent."
     };
 
-    if (!isProduction || process.env.EXPOSE_OTP_IN_DEV === "true") {
-      response.developmentCode = code;
+    if (
+      NODE_ENV !== "production" ||
+      process.env.EXPOSE_OTP_IN_DEV === "true"
+    ) {
+      response.developmentCode =
+        code;
     }
 
     res.json(response);
-  } catch (error) {
-    console.error(error);
-
-    res.status(500).json({
-      ok: false,
-      message: "خطا در ارسال کد تأیید."
-    });
   }
-});
+);
 
-app.post("/api/auth/verify-otp", async (req, res) => {
-  try {
-    const phone = normalizePhone(req.body.phone);
-    const code = String(req.body.code || "").trim();
+app.post(
+  "/api/auth/verify-otp",
+  authLimiter,
+  (req, res) => {
+    const phone =
+      normalizePhone(req.body.phone);
+
+    const code =
+      safeText(req.body.code);
 
     if (!validPhone(phone)) {
       return res.status(400).json({
         ok: false,
-        message: "شماره موبایل معتبر نیست."
+        error: "Invalid phone number."
       });
     }
 
     if (!/^\d{6}$/.test(code)) {
       return res.status(400).json({
         ok: false,
-        message: "کد تأیید باید ۶ رقمی باشد."
+        error: "Invalid verification code."
       });
     }
 
-    const db = readDB();
+    const request =
+      db.otpRequests
+        .filter(
+          (item) =>
+            item.phone === phone
+        )
+        .sort(
+          (a, b) =>
+            new Date(b.createdAt) -
+            new Date(a.createdAt)
+        )[0];
 
-    const otp = [...db.otpRequests]
-      .reverse()
-      .find(
-        (item) =>
-          item.phone === phone &&
-          !item.verified
-      );
-
-    if (!otp) {
+    if (!request) {
       return res.status(400).json({
         ok: false,
-        message: "کد تأیید پیدا نشد."
+        error: "Verification request not found."
       });
     }
 
     if (
-      new Date(otp.expiresAt).getTime() <
+      request.expiresAt <
       Date.now()
     ) {
       return res.status(400).json({
         ok: false,
-        message: "کد تأیید منقضی شده است."
+        error: "Verification code expired."
       });
     }
 
-    if (otp.attempts >= 5) {
+    if (request.attempts >= 5) {
       return res.status(429).json({
         ok: false,
-        message: "تعداد تلاش‌ها بیش از حد مجاز است."
+        error: "Too many attempts."
       });
     }
 
-    if (otp.code !== code) {
-      otp.attempts += 1;
-      saveDB(db);
+    request.attempts += 1;
+
+    const hash =
+      crypto
+        .createHash("sha256")
+        .update(code)
+        .digest("hex");
+
+    if (hash !== request.codeHash) {
+      persist();
 
       return res.status(400).json({
         ok: false,
-        message: "کد تأیید اشتباه است."
+        error: "Incorrect verification code."
       });
     }
 
-    otp.verified = true;
-    otp.verifiedAt = now();
+    db.otpRequests =
+      db.otpRequests.filter(
+        (item) =>
+          item.id !== request.id
+      );
 
-    let user = db.users.find(
-      (item) => item.phone === phone
-    );
-
-    const isNewUser = !user;
+    let user =
+      db.users.find(
+        (item) =>
+          item.phone === phone
+      );
 
     if (!user) {
       user = {
-        id: makeId("usr_"),
+        id: makeId("user"),
         phone,
         name: "",
-        role: "customer",
+        email: "",
+        language:
+          req.body.language === "en"
+            ? "en"
+            : "fa",
+        role: "user",
+        points: 0,
+        referralCode:
+          `SAMI-${crypto
+            .randomBytes(3)
+            .toString("hex")
+            .toUpperCase()}`,
+        active: true,
         createdAt: now(),
-        lastLoginAt: now()
+        updatedAt: now()
       };
 
       db.users.push(user);
+
+      audit(
+        "user_registered",
+        {
+          id: user.id,
+          type: "user",
+          role: "user"
+        },
+        {
+          phone
+        }
+      );
     } else {
-      user.lastLoginAt = now();
+      user.updatedAt = now();
     }
 
-    audit(db, req, "user_login", {
-      phone,
-      isNewUser
-    });
+    persist();
 
-    saveDB(db);
-
-    const token = signUserToken(user);
+    const token =
+      signUserToken(user);
 
     res.json({
       ok: true,
       token,
-      user: publicUser(user),
-      isNewUser
-    });
-  } catch (error) {
-    console.error(error);
-
-    res.status(500).json({
-      ok: false,
-      message: "خطا در تأیید کد."
+      user: publicUser(user)
     });
   }
-});
+);
 
-app.get("/api/me", auth, (req, res) => {
-  res.json({
-    ok: true,
-    user: publicUser(req.user)
-  });
-});
-
-/* =========================================================
-   STORE
-   ========================================================= */
-
-app.get("/api/store", (req, res) => {
-  const db = readDB();
-
-  const products = db.products
-    .filter((item) => item.active !== false)
-    .sort((a, b) => {
-      if (a.featured !== b.featured) {
-        return a.featured ? -1 : 1;
-      }
-
-      return safeNumber(a.sort, 999) -
-        safeNumber(b.sort, 999);
-    });
-
-  const categories = db.categories
-    .filter((item) => item.active !== false)
-    .sort(
-      (a, b) =>
-        safeNumber(a.sort, 999) -
-        safeNumber(b.sort, 999)
-    );
-
-  res.json({
-    ok: true,
-
-    settings: db.settings,
-
-    categories,
-
-    products,
-
-    flashSale: db.flashSale,
-
-    wheel: db.wheel
-  });
-});
-
-/* =========================================================
-   PRODUCTS
-   ========================================================= */
-
-app.get("/api/products", (req, res) => {
-  const db = readDB();
-
-  res.json({
-    ok: true,
-    products: db.products
-  });
-});
-
-app.post("/api/products", adminAuth, (req, res) => {
-  const db = readDB();
-
-  const product = {
-    id: req.body.id || makeId("prd_"),
-    name: String(req.body.name || "محصول جدید"),
-    category: String(req.body.category || "wg"),
-    rarity: String(req.body.rarity || ""),
-    price: safeNumber(req.body.price),
-    duration: String(req.body.duration || ""),
-    volume: String(req.body.volume || ""),
-    server: String(req.body.server || ""),
-    ping: String(req.body.ping || ""),
-    stock: safeNumber(req.body.stock),
-    active:
-      req.body.active === undefined
-        ? true
-        : Boolean(req.body.active),
-    featured: Boolean(req.body.featured),
-    features: Array.isArray(req.body.features)
-      ? req.body.features
-      : [],
-    sort: safeNumber(req.body.sort, 999),
-    createdAt: now(),
-    updatedAt: now()
-  };
-
-  const existingIndex = db.products.findIndex(
-    (item) => item.id === product.id
-  );
-
-  if (existingIndex >= 0) {
-    product.createdAt =
-      db.products[existingIndex].createdAt ||
-      product.createdAt;
-
-    db.products[existingIndex] = {
-      ...db.products[existingIndex],
-      ...product,
-      updatedAt: now()
-    };
-  } else {
-    db.products.push(product);
-  }
-
-  audit(db, req, "product_save", {
-    productId: product.id
-  });
-
-  saveDB(db);
-
-  res.json({
-    ok: true,
-    product
-  });
-});
-
-app.delete(
-  "/api/products/:id",
-  adminAuth,
+app.get(
+  "/api/me",
+  userAuth,
   (req, res) => {
-    const db = readDB();
-
-    const index = db.products.findIndex(
-      (item) => item.id === req.params.id
-    );
-
-    if (index < 0) {
-      return res.status(404).json({
-        ok: false,
-        message: "محصول پیدا نشد."
-      });
-    }
-
-    const removed = db.products.splice(index, 1)[0];
-
-    audit(db, req, "product_delete", {
-      productId: removed.id
-    });
-
-    saveDB(db);
-
     res.json({
-      ok: true
+      ok: true,
+      user: publicUser(req.user)
     });
   }
 );
 
 /* =========================================================
-   CATEGORIES
-   ========================================================= */
+   STORE
+========================================================= */
 
-app.get("/api/categories", (req, res) => {
-  const db = readDB();
+app.get(
+  "/api/store",
+  (req, res) => {
+    const activeCategories =
+      db.categories
+        .filter(
+          (item) =>
+            item.active !== false
+        )
+        .sort(
+          (a, b) =>
+            safeNumber(a.sort) -
+            safeNumber(b.sort)
+        );
 
-  res.json({
-    ok: true,
-    categories: db.categories
-  });
-});
+    const activeProducts =
+      db.products
+        .filter(
+          (item) =>
+            item.active !== false
+        )
+        .sort(
+          (a, b) =>
+            safeNumber(a.sort) -
+            safeNumber(b.sort)
+        );
 
-app.put("/api/categories", adminAuth, (req, res) => {
-  const db = readDB();
-
-  if (!Array.isArray(req.body.categories)) {
-    return res.status(400).json({
-      ok: false,
-      message: "ساختار دسته‌بندی‌ها معتبر نیست."
+    res.json({
+      ok: true,
+      settings: {
+        siteName:
+          db.settings.siteName,
+        siteShortName:
+          db.settings.siteShortName,
+        supportUsername:
+          db.settings.supportUsername,
+        botUsername:
+          db.settings.botUsername,
+        channelUsername:
+          db.settings.channelUsername,
+        currency:
+          db.settings.currency,
+        defaultLanguage:
+          db.settings.defaultLanguage,
+        supportedLanguages:
+          db.settings.supportedLanguages,
+        siteTitle:
+          db.settings.siteTitle,
+        siteDescription:
+          db.settings.siteDescription,
+        maintenanceMode:
+          db.settings.maintenanceMode
+      },
+      categories:
+        activeCategories,
+      products:
+        activeProducts,
+      flashSale:
+        db.flashSale,
+      wheel:
+        db.wheel
     });
   }
-
-  db.categories = req.body.categories.map(
-    (category, index) => ({
-      id:
-        category.id ||
-        makeId("cat_"),
-      name:
-        String(category.name || "").trim() ||
-        `دسته ${index + 1}`,
-      slug:
-        String(category.slug || "").trim() ||
-        `category-${index + 1}`,
-      active:
-        category.active !== false,
-      sort:
-        safeNumber(category.sort, index + 1)
-    })
-  );
-
-  audit(db, req, "categories_update");
-
-  saveDB(db);
-
-  res.json({
-    ok: true,
-    categories: db.categories
-  });
-});
+);
 
 /* =========================================================
-   ORDERS
-   ========================================================= */
+   PRODUCTS
+========================================================= */
+
+app.get(
+  "/api/products",
+  adminAuth,
+  (req, res) => {
+    res.json({
+      ok: true,
+      products: db.products
+    });
+  }
+);
 
 app.post(
-  "/api/orders",
-  auth,
-  upload.single("receipt"),
+  "/api/products",
+  adminAuth,
   (req, res) => {
-    try {
-      const db = readDB();
+    const body = req.body || {};
 
-      const productId = String(
-        req.body.productId || ""
-      );
+    const product = {
+      id:
+        safeText(body.id) ||
+        makeId("product"),
 
-      const product = db.products.find(
-        (item) =>
-          item.id === productId &&
-          item.active !== false
-      );
+      name:
+        safeText(body.name) ||
+        "Untitled Product",
 
-      if (!product) {
-        if (req.file) {
-          fs.unlinkSync(req.file.path);
-        }
+      category:
+        safeText(body.category) ||
+        "wireguard",
 
-        return res.status(404).json({
-          ok: false,
-          message: "محصول پیدا نشد."
-        });
+           protocol:
+        safeText(body.protocol) ||
+        "WireGuard",
+
+      rarity:
+        safeText(body.rarity) ||
+        "standard",
+
+      price:
+        safeNumber(body.price),
+
+      duration:
+        safeText(body.duration) ||
+        "30 روز",
+
+      volume:
+        safeText(body.volume) ||
+        "نامحدود",
+
+      server:
+        safeText(body.server) ||
+        "Auto",
+
+      ping:
+        safeText(body.ping) ||
+        "کم",
+
+      stock:
+        Math.max(
+          0,
+          Math.floor(
+            safeNumber(body.stock)
+          )
+        ),
+
+      description:
+        safeText(body.description) ||
+        "",
+
+      features:
+        Array.isArray(body.features)
+          ? body.features
+              .map((item) => safeText(item))
+              .filter(Boolean)
+          : [],
+
+      featured:
+        body.featured === true ||
+        body.featured === "true" ||
+        body.featured === "1",
+
+      active:
+        body.active !== false &&
+        body.active !== "false" &&
+        body.active !== "0",
+
+      image:
+        safeText(body.image) ||
+        "",
+
+      createdAt:
+        now(),
+
+      updatedAt:
+        now()
+    };
+
+    db.products.push(product);
+
+    saveDB(db);
+
+    audit(
+      req.admin,
+      "product.create",
+      {
+        productId: product.id,
+        name: product.name
       }
+    );
 
-      if (safeNumber(product.stock) <= 0) {
-        if (req.file) {
-          fs.unlinkSync(req.file.path);
-        }
-
-        return res.status(400).json({
-          ok: false,
-          message: "موجودی این محصول تمام شده است."
-        });
-      }
-
-      if (!req.file) {
-        return re
+    res.json({
+      ok: true,
+      product
+    });
+  }
+);
