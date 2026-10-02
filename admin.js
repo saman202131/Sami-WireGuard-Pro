@@ -2639,3 +2639,571 @@ async function replyToTicket(
     );
   }
 }
+async function renderCouponsPage() {
+  await loadCoupons();
+
+  const coupons =
+    Array.isArray(state.coupons)
+      ? state.coupons
+      : [];
+
+  $("#content").innerHTML = `
+    <section class="admin-page">
+
+      <div class="page-head">
+
+        <div>
+          <span class="page-kicker">
+            فروش
+          </span>
+
+          <h2>
+            کدهای تخفیف
+          </h2>
+
+          <p>
+            ساخت و مدیریت کدهای تخفیف برای مشتریان
+          </p>
+        </div>
+
+        <div class="page-actions">
+
+          <button
+            class="admin-button"
+            onclick="openCouponModal()"
+          >
+            + کد تخفیف جدید
+          </button>
+
+        </div>
+
+      </div>
+
+      <div class="admin-card">
+
+        <div class="table-wrap">
+
+          <table class="admin-table">
+
+            <thead>
+              <tr>
+                <th>کد</th>
+                <th>نوع</th>
+                <th>مقدار</th>
+                <th>استفاده</th>
+                <th>حداکثر</th>
+                <th>انقضا</th>
+                <th>وضعیت</th>
+                <th>عملیات</th>
+              </tr>
+            </thead>
+
+            <tbody>
+
+              ${
+                coupons.length
+                  ? coupons
+                      .map(
+                        (coupon) => `
+                          <tr>
+
+                            <td>
+                              <strong>
+                                ${escapeHtml(
+                                  coupon.code ||
+                                  "-"
+                                )}
+                              </strong>
+                            </td>
+
+                            <td>
+                              ${coupon.type === "percent"
+                                ? "درصدی"
+                                : "مبلغ ثابت"}
+                            </td>
+
+                            <td>
+                              ${
+                                coupon.type ===
+                                "percent"
+                                  ? `${Number(
+                                      coupon.value ||
+                                      0
+                                    )}%`
+                                  : formatMoney(
+                                      coupon.value ||
+                                      0
+                                    )
+                              }
+                            </td>
+
+                            <td>
+                              ${Number(
+                                coupon.usedCount ||
+                                0
+                              )}
+                            </td>
+
+                            <td>
+                              ${
+                                coupon.maxUses
+                                  ? Number(
+                                      coupon.maxUses
+                                    )
+                                  : "نامحدود"
+                              }
+                            </td>
+
+                            <td>
+                              ${
+                                coupon.expiresAt
+                                  ? formatDate(
+                                      coupon.expiresAt
+                                    )
+                                  : "بدون انقضا"
+                              }
+                            </td>
+
+                            <td>
+                              ${statusBadge(
+                                coupon.active === false
+                                  ? "inactive"
+                                  : "active"
+                              )}
+                            </td>
+
+                            <td>
+
+                              <div class="table-actions">
+
+                                <button
+                                  class="admin-button small"
+                                  onclick='openCouponModal(${JSON.stringify(
+                                    coupon
+                                  )})'
+                                >
+                                  ویرایش
+                                </button>
+
+                                <button
+                                  class="admin-button small danger"
+                                  onclick="deleteCoupon('${escapeHtml(
+                                    coupon.id
+                                  )}')"
+                                >
+                                  حذف
+                                </button>
+
+                              </div>
+
+                            </td>
+
+                          </tr>
+                        `
+                      )
+                      .join("")
+                  : `
+                    <tr>
+                      <td colspan="8">
+                        کد تخفیفی وجود ندارد.
+                      </td>
+                    </tr>
+                  `
+              }
+
+            </tbody>
+
+          </table>
+
+        </div>
+
+      </div>
+
+    </section>
+  `;
+}
+
+function openCouponModal(
+  coupon = {}
+) {
+  openModal(
+    coupon.id
+      ? "ویرایش کد تخفیف"
+      : "کد تخفیف جدید",
+
+    `
+      <form id="couponForm">
+
+        <input
+          type="hidden"
+          name="id"
+          value="${escapeHtml(
+            coupon.id ||
+            ""
+          )}"
+        >
+
+        <label>
+          کد تخفیف
+
+          <input
+            name="code"
+            value="${escapeHtml(
+              coupon.code ||
+              ""
+            )}"
+            placeholder="WELCOME10"
+            required
+          >
+        </label>
+
+        <label>
+          نوع تخفیف
+
+          <select name="type">
+
+            <option
+              value="percent"
+              ${
+                coupon.type !== "fixed"
+                  ? "selected"
+                  : ""
+              }
+            >
+              درصدی
+            </option>
+
+            <option
+              value="fixed"
+              ${
+                coupon.type === "fixed"
+                  ? "selected"
+                  : ""
+              }
+            >
+              مبلغ ثابت
+            </option>
+
+          </select>
+
+        </label>
+
+        <label>
+          مقدار تخفیف
+
+          <input
+            type="number"
+            name="value"
+            min="0"
+            step="0.01"
+            value="${Number(
+              coupon.value ||
+              0
+            )}"
+            required
+          >
+        </label>
+
+        <label>
+          حداکثر تعداد استفاده
+
+          <input
+            type="number"
+            name="maxUses"
+            min="0"
+            value="${Number(
+              coupon.maxUses ||
+              0
+            )}"
+            placeholder="0 = نامحدود"
+          >
+        </label>
+
+        <label>
+          حداقل مبلغ سفارش
+
+          <input
+            type="number"
+            name="minOrder"
+            min="0"
+            value="${Number(
+              coupon.minOrder ||
+              0
+            )}"
+          >
+        </label>
+
+        <label>
+          تاریخ انقضا
+
+          <input
+            type="datetime-local"
+            name="expiresAt"
+            value="${toDateTimeLocal(
+              coupon.expiresAt
+            )}"
+          >
+        </label>
+
+        <label>
+          توضیحات
+
+          <textarea
+            name="description"
+            rows="3"
+          >${escapeHtml(
+            coupon.description ||
+            ""
+          )}</textarea>
+
+        </label>
+
+        <label class="checkbox-row">
+
+          <input
+            type="checkbox"
+            name="active"
+            ${
+              coupon.active !== false
+                ? "checked"
+                : ""
+            }
+          >
+
+          فعال
+
+        </label>
+
+        <button
+          type="submit"
+          class="admin-button"
+        >
+          ذخیره کد تخفیف
+        </button>
+
+      </form>
+    `
+  );
+
+  $("#couponForm").onsubmit =
+    saveCoupon;
+}
+
+function toDateTimeLocal(
+  value
+) {
+  if (!value) {
+    return "";
+  }
+
+  const date =
+    new Date(value);
+
+  if (
+    Number.isNaN(
+      date.getTime()
+    )
+  ) {
+    return "";
+  }
+
+  const pad =
+    (number) =>
+      String(number)
+        .padStart(2, "0");
+
+  return (
+    `${date.getFullYear()}-` +
+    `${pad(
+      date.getMonth() + 1
+    )}-` +
+    `${pad(
+      date.getDate()
+    )}T` +
+    `${pad(
+      date.getHours()
+    )}:` +
+    `${pad(
+      date.getMinutes()
+    )}`
+  );
+}
+
+async function saveCoupon(
+  event
+) {
+  event.preventDefault();
+
+  const form =
+    new FormData(
+      event.target
+    );
+
+  const code =
+    String(
+      form.get("code") ||
+      ""
+    )
+      .trim()
+      .toUpperCase();
+
+  const type =
+    form.get("type") ||
+    "percent";
+
+  const value =
+    Number(
+      form.get("value") ||
+      0
+    );
+
+  const maxUses =
+    Number(
+      form.get("maxUses") ||
+      0
+    );
+
+  const minOrder =
+    Number(
+      form.get("minOrder") ||
+      0
+    );
+
+  const expiresAt =
+    form.get(
+      "expiresAt"
+    ) || "";
+
+  const payload = {
+    id:
+      form.get("id") ||
+      "",
+
+    code,
+
+    type,
+
+    value,
+
+    maxUses,
+
+    minOrder,
+
+    expiresAt:
+      expiresAt
+        ? new Date(
+            expiresAt
+          ).toISOString()
+        : null,
+
+    description:
+      form.get(
+        "description"
+      ) || "",
+
+    active:
+      form.get("active") ===
+      "on"
+  };
+
+  if (!code) {
+    showToast(
+      "کد تخفیف را وارد کنید.",
+      "error"
+    );
+    return;
+  }
+
+  if (value <= 0) {
+    showToast(
+      "مقدار تخفیف باید بیشتر از صفر باشد.",
+      "error"
+    );
+    return;
+  }
+
+  if (
+    type === "percent" &&
+    value > 100
+  ) {
+    showToast(
+      "تخفیف درصدی نمی‌تواند بیشتر از 100 باشد.",
+      "error"
+    );
+    return;
+  }
+
+  try {
+    await apiFetch(
+      "/api/coupons",
+      {
+        method: "POST",
+
+        headers: {
+          "Content-Type":
+            "application/json"
+        },
+
+        body:
+          JSON.stringify(
+            payload
+          )
+      }
+    );
+
+    closeModal();
+
+    await loadCoupons();
+
+    await navigate(
+      "coupons"
+    );
+
+    showToast(
+      "کد تخفیف ذخیره شد."
+    );
+  } catch (error) {
+    showToast(
+      error.message,
+      "error"
+    );
+  }
+}
+
+async function deleteCoupon(
+  couponId
+) {
+  if (
+    !window.confirm(
+      "آیا از حذف این کد تخفیف مطمئن هستید؟"
+    )
+  ) {
+    return;
+  }
+
+  try {
+    await apiFetch(
+      `/api/coupons/${encodeURIComponent(
+        couponId
+      )}`,
+      {
+        method: "DELETE"
+      }
+    );
+
+    await loadCoupons();
+
+    await navigate(
+      "coupons"
+    );
+
+    showToast(
+      "کد تخفیف حذف شد."
+    );
+  } catch (error) {
+    showToast(
+      error.message,
+      "error"
+    );
+  }
+}
