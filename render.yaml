@@ -1,0 +1,25 @@
+services:
+  - type: web
+    name: sami-wireguard
+    runtime: node
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: JWT_SECRET
+        generateValue: true
+      - key: ADMIN_USERNAME
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: TELEGRAM_BOT_USERNAME
+        sync: false
+      - key: TELEGRAM_OWNER_ID
+        sync: false
+      - key: TELEGRAM_SUPPORT_ID
+        sync: false
+      - key: TELEGRAM_CHANNEL_ID
+        sync: false
