@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Sami WireGuard</title><link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<header class="nav">
+  <a class="brand" href="/">SAMI <span>WIREGUARD</span></a>
+  <nav><a href="#plans">پلن‌ها</a><a href="#steps">نحوه خرید</a><a href="#faq">سوالات</a><a id="supportLink" target="_blank">پشتیبانی</a></nav>
+  <div><button id="langBtn" class="ghost">EN</button><button id="loginBtn" class="primary">ورود / ثبت‌نام</button></div>
+</header>
+<main>
+<section class="hero"><div><p class="eyebrow">PREMIUM VPN STORE</p><h1>اتصال سریع، پایدار و امن با <span>Sami WireGuard</span></h1><p>سرویس‌های WireGuard با مدیریت دستی سفارش، تحویل کانفیگ و QR و پشتیبانی تلگرام.</p><div class="actions"><a class="primary" href="#plans">مشاهده پلن‌ها</a><a class="ghost" href="#steps">چطور کار می‌کند؟</a></div></div><div class="orb"><div>WG</div></div></section>
+<section class="benefits"><div><b>⚡ سرعت بالا</b><small>سرورهای بهینه</small></div><div><b>🛡 امنیت</b><small>WireGuard</small></div><div><b>📦 تحویل دستی</b><small>لینک + کانفیگ + QR</small></div><div><b>💬 پشتیبانی</b><small>Telegram</small></div></section>
+<section id="plans" class="section"><div class="section-head"><p class="eyebrow">PLANS</p><h2>پلن مناسب خودت را انتخاب کن</h2></div><div id="cats" class="chips"></div><div id="products" class="grid"></div></section>
+<section id="steps" class="section"><div class="section-head"><p class="eyebrow">3 STEPS</p><h2>خرید ساده</h2></div><div class="steps"><article><i>01</i><h3>ثبت با Telegram ID</h3><p>بدون شماره موبایل و بدون SMS، فقط Telegram ID.</p></article><article><i>02</i><h3>پرداخت و ارسال رسید</h3><p>شماره کارت و مبلغ را ببین و رسید را آپلود کن.</p></article><article><i>03</i><h3>تأیید و تحویل</h3><p>بعد از تأیید مدیریت، لینک، فایل .conf و QR در داشبورد قرار می‌گیرد.</p></article></div></section>
+<section id="faq" class="section"><div class="section-head"><p class="eyebrow">FAQ</p><h2>سوالات متداول</h2></div><div class="faq"><details><summary>آیا شماره موبایل لازم است؟</summary><p>خیر. این نسخه هیچ SMS/OTP ندارد و حساب با Telegram ID ثبت می‌شود.</p></details><details><summary>کانفیگ چطور تحویل می‌شود؟</summary><p>پس از تأیید سفارش، مدیریت می‌تواند لینک، فایل .conf، QR و توضیحات را تحویل دهد.</p></details><details><summary>پشتیبانی کجاست؟</summary><p>از لینک پشتیبانی تلگرام در بالای سایت استفاده کنید.</p></details></div></section>
+</main>
+<footer><b>Sami WireGuard</b><span>Premium Telegram-managed VPN Store</span><div><a id="salesFooter" target="_blank">ربات فروش</a> · <a id="supportFooter" target="_blank">پشتیبانی</a> · <a id="channelFooter" target="_blank">کانال</a></div></footer>
+
+<div id="authModal" class="modal hidden"><div class="modal-card"><button class="x" onclick="closeAuth()">×</button><h2 id="authTitle">حساب کاربری</h2><div class="tabs"><button id="loginMode" class="primary" onclick="setAuthMode('login')">قبلاً ثبت‌نام کرده‌ام</button><button id="registerMode" class="ghost" onclick="setAuthMode('register')">ثبت‌نام می‌کنم</button></div><p class="muted">فقط Telegram ID و رمز عبور؛ بدون SMS و شماره موبایل.</p><input id="tgId" inputmode="numeric" placeholder="Telegram ID (مثلاً 123456789)"><input id="tgName" placeholder="نام (در ثبت‌نام)"><input id="tgUsername" placeholder="Username (اختیاری)"><input id="tgPassword" type="password" placeholder="رمز عبور حداقل ۶ کاراکتر"><button class="primary wide" onclick="authSubmit()">ادامه</button><p id="authMsg"></p></div></div>
+<div id="checkoutModal" class="modal hidden"><div class="modal-card"><button class="x" onclick="closeCheckout()">×</button><h2>ثبت سفارش</h2><div id="checkoutInfo"></div><label>تعداد (۱ تا ۱۰)<input id="quantity" type="number" min="1" max="10" value="1" oninput="renderNames()"></label><div id="serviceNames"></div><select id="paymentMethod" onchange="toggleReceipt()"><option value="card">کارت‌به‌کارت</option><option value="gateway">درگاه آنلاین (به‌زودی)</option></select><div id="paymentBox" class="product"></div><input id="coupon" placeholder="کد تخفیف (اختیاری)"><input id="referral" placeholder="کد معرف (اختیاری)"><input id="receipt" type="file" accept="image/*,.pdf"><button class="primary wide" onclick="submitOrder()">ثبت سفارش</button><p id="orderMsg"></p></div></div>
+<script src="/app.js"></script>
+</body></html>
