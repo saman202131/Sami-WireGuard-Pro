@@ -1,23 +1,35 @@
 'use strict';
 
-const API_BASE = '/api';
+const API = '/api';
 
 const state = {
   services: [],
+  selectedService: null,
   selectedPlan: null,
   submitting: false
 };
 
 const $ = (selector) => document.querySelector(selector);
 
-const escapeHTML = (value) =>
-  String(value ?? '').replace(/[&<>"']/g, (char) => ({
+function escapeHTML(value) {
+  return String(value ?? '').replace(/[&<>"']/g, char => ({
     '&': '&amp;',
     '<': '&lt;',
     '>': '&gt;',
     '"': '&quot;',
     "'": '&#39;'
   })[char]);
+}
+
+function formatPrice(value) {
+  const price = Number(value);
+
+  if (!Number.isFinite(price) || price < 0) {
+    return 'استعلام قیمت';
+  }
+
+  return `${new Intl.NumberFormat('fa-IR').format(price)} تومان`;
+}
 
 function showToast(message, type = 'success') {
   let toast = $('#toast');
@@ -34,91 +46,41 @@ function showToast(message, type = 'success') {
   toast.classList.add('show');
 
   clearTimeout(showToast.timer);
+
   showToast.timer = setTimeout(() => {
     toast.classList.remove('show');
   }, 3500);
 }
 
-function formatPrice(value) {
-  const price = Number(value);
+function serviceIcon(service) {
+  if (service.icon) return service.icon;
 
-  if (!Number.isFinite(price) || price < 0) {
-    return 'استعلام قیمت';
-  }
+  const name = `${service.name || ''} ${service.id || ''}`.toLowerCase();
 
-  return `${new Intl.NumberFormat('fa-IR').format(price)} تومان`;
-}
+  if (name.includes('dns')) return '🌐';
+  if (name.includes('v2ray')) return '🚀';
+  if (name.includes('wireguard')) return '🛡️';
 
-function getPlanName(plan) {
-  return plan.name || plan.title || plan.label || 'بسته سرویس';
-}
-
-function getPlanPrice(plan) {
-  return plan.price ?? plan.amount ?? plan.cost ?? 0;
-}
-
-function getPlanVolume(plan) {
-  return plan.volume || plan.data || plan.traffic || plan.size || '';
-}
-
-function getServiceIcon(service) {
-  const text = `${service.name || ''} ${service.type || ''}`.toLowerCase();
-
-  if (text.includes('dns')) return '🌐';
-  if (text.includes('v2ray') || text.includes('v2')) return '🚀';
-  if (text.includes('wireguard') || text.includes('wire')) return '🛡️';
-
-  return service.icon || '⚡';
+  return '⚡';
 }
 
 function normalizeServices(data) {
-  const raw = Array.isArray(data)
-    ? data
-    : Array.isArray(data.services)
-      ? data.services
-      : Array.isArray(data.products)
-        ? data.products
-        : Array.isArray(data.items)
-          ? data.items
-          : [];
+  const services = Array.isArray(data?.services)
+    ? data.services
+    : [];
 
-  return raw.map((service, index) => {
-    const plans = Array.isArray(service.plans)
-      ? service.plans
-      : Array.isArray(service.packages)
-        ? service.packages
-        : Array.isArray(service.prices)
-          ? service.prices
-          : [];
-
-    return {
+  return services
+    .filter(service => service && service.enabled !== false)
+    .map(service => ({
       ...service,
-      id: String(service.id ?? service.slug ?? `service-${index + 1}`),
-      name: service.name || service.title || 'سرویس اینترنت',
-      description: service.description || service.desc || 'جزئیات این سرویس را بررسی کنید.',
-      type: service.type || service.category || '',
-      icon: getServiceIcon(service),
-      plans
-    };
-  });
-}
-
-function getServiceFeatures(service) {
-  if (Array.isArray(service.features)) {
-    return service.features.slice(0, 4);
-  }
-
-  const features = [];
-
-  if (service.type) features.push(service.type);
-  if (service.location || service.country) {
-    features.push(service.location || service.country);
-  }
-  if (service.duration || service.period) {
-    features.push(service.duration || service.period);
-  }
-
-  return features.length ? features : ['انتخاب بسته', 'ثبت درخواست'];
+      id: String(service.id || ''),
+      name: service.name || 'سرویس',
+      description: service.subtitle || service.description || '',
+      icon: serviceIcon(service),
+      plans: Array.isArray(service.plans)
+        ? service.plans.filter(plan => plan && plan.enabled !== false)
+        : []
+    }));
 }
 
 function renderServices() {
@@ -129,9 +91,8 @@ function renderServices() {
   if (!state.services.length) {
     grid.innerHTML = `
       <div class="empty-state">
-        <div style="font-size:30px;margin-bottom:8px">📦</div>
-        <strong>فعلاً سرویسی نمایش داده نمی‌شود</strong>
-        <p style="margin-top:6px">لطفاً کمی بعد دوباره امتحان کنید.</p>
+        <div style="font-size:30px">📦</div>
+        <strong>فعلاً سرویسی برای نمایش وجود ندارد.</strong>
       </div>
     `;
     return;
@@ -139,9 +100,15 @@ function renderServices() {
 
   grid.innerHTML = state.services.map((service, index) => {
     const plans = service.plans;
-    const firstPlan = plans[0];
-    const price = firstPlan ? getPlanPrice(firstPlan) : getPlanPrice(service);
-    const features = getServiceFeatures(service);
+    const lowestPrice = plans.length
+      ? Math.min(...plans.map(plan => Number(plan.price) || 0))
+      : null;
+
+    const features = [
+      service.accent ? service.accent : '',
+      plans.length ? `${plans.length} بسته` : '',
+      service.enabled ? 'فعال' : ''
+    ].filter(Boolean);
 
     return `
       <article class="service-card ${index === 0 ? 'featured' : ''}">
@@ -150,7 +117,7 @@ function renderServices() {
         <h3>${escapeHTML(service.name)}</h3>
 
         <p class="service-description">
-          ${escapeHTML(service.description)}
+          ${escapeHTML(service.description || 'برای مشاهده بسته‌ها و قیمت‌ها انتخاب کنید.')}
         </p>
 
         <div class="service-meta">
@@ -161,23 +128,24 @@ function renderServices() {
 
         <div class="service-footer">
           <div class="service-price">
-            ${formatPrice(price)}
-            <small>${plans.length ? `${plans.length} بسته قابل انتخاب` : 'قیمت سرویس'}</small>
+            ${lowestPrice === null ? 'استعلام قیمت' : formatPrice(lowestPrice)}
+            <small>${plans.length ? 'شروع قیمت بسته‌ها' : 'بسته‌ای موجود نیست'}</small>
           </div>
 
           <button
             type="button"
-            class="btn btn-primary choose-service"
+            class="btn btn-primary"
             data-service-id="${escapeHTML(service.id)}"
+            ${plans.length ? '' : 'disabled'}
           >
-            مشاهده و خرید
+            مشاهده بسته‌ها
           </button>
         </div>
       </article>
     `;
   }).join('');
 
-  grid.querySelectorAll('.choose-service').forEach(button => {
+  grid.querySelectorAll('[data-service-id]').forEach(button => {
     button.addEventListener('click', () => {
       const service = state.services.find(
         item => item.id === button.dataset.serviceId
@@ -188,7 +156,7 @@ function renderServices() {
   });
 }
 
-function ensureModalElements() {
+function ensureModal() {
   let modal = $('#orderModal');
 
   if (!modal) {
@@ -197,9 +165,9 @@ function ensureModalElements() {
     modal.className = 'modal';
 
     modal.innerHTML = `
-      <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+      <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="orderTitle">
         <div class="modal-header">
-          <h2 id="modalTitle">ثبت درخواست خرید</h2>
+          <h2 id="orderTitle">ثبت درخواست خرید</h2>
           <button type="button" class="icon-button" id="modalClose" aria-label="بستن">×</button>
         </div>
 
@@ -215,17 +183,19 @@ function ensureModalElements() {
               class="form-control"
               id="tgUsername"
               type="text"
-              placeholder="@YourUsername"
+              maxlength="32"
+              placeholder="مثلاً saman_123"
               autocomplete="off"
-              maxlength="64"
               required
             >
-            <small class="form-hint">آیدی تلگرام خود را برای پیگیری درخواست وارد کنید.</small>
+            <small class="form-hint">
+              نام کاربری تلگرام را بدون @ وارد کنید.
+            </small>
           </div>
 
           <div class="order-summary" id="orderSummary"></div>
 
-          <button type="submit" class="btn btn-primary btn-block" id="confirmOrder">
+          <button class="btn btn-primary btn-block" id="confirmOrder" type="submit">
             ثبت درخواست سفارش
           </button>
 
@@ -244,69 +214,56 @@ function ensureModalElements() {
   });
 
   $('#orderForm')?.addEventListener('submit', submitOrder);
+
+  $('#modalPlan')?.addEventListener('change', updateOrderSummary);
 }
 
 function openOrderModal(service) {
-  ensureModalElements();
+  ensureModal();
 
   if (!service.plans.length) {
-    showToast('برای این سرویس هنوز بسته‌ای تعریف نشده است.', 'error');
+    showToast('برای این سرویس بسته‌ای موجود نیست.', 'error');
     return;
   }
 
-  state.selectedPlan = {
-    service,
-    plan: service.plans[0]
-  };
+  state.selectedService = service;
 
-  const select = $('#modalPlan');
+  $('#modalPlan').innerHTML = service.plans.map((plan, index) => `
+    <option value="${index}">
+      ${escapeHTML(plan.title || plan.name || 'بسته')}
+      — ${escapeHTML(formatPrice(plan.price))}
+    </option>
+  `).join('');
 
-  select.innerHTML = service.plans.map((plan, index) => {
-    const planName = getPlanName(plan);
-    const planPrice = getPlanPrice(plan);
-    const volume = getPlanVolume(plan);
-    const suffix = volume ? ` — ${volume}` : '';
-
-    return `
-      <option value="${index}">
-        ${escapeHTML(planName + suffix)} | ${escapeHTML(formatPrice(planPrice))}
-      </option>
-    `;
-  }).join('');
-
+  $('#tgUsername').value = '';
   $('#orderResult').textContent = '';
-  $('#modalPlan').onchange = updateOrderSummary;
+
+  const button = $('#confirmOrder');
+  button.disabled = false;
+  button.textContent = 'ثبت درخواست سفارش';
 
   updateOrderSummary();
 
-  const modal = $('#orderModal');
-  modal.classList.add('open');
+  $('#orderModal').classList.add('open');
   document.body.style.overflow = 'hidden';
-
-  setTimeout(() => $('#tgUsername')?.focus(), 100);
 }
 
 function closeOrderModal() {
-  const modal = $('#orderModal');
-
-  if (modal) modal.classList.remove('open');
-
+  $('#orderModal')?.classList.remove('open');
   document.body.style.overflow = '';
 }
 
 function updateOrderSummary() {
-  if (!state.selectedPlan) return;
+  const service = state.selectedService;
+  const select = $('#modalPlan');
 
-  const index = Number($('#modalPlan')?.value || 0);
-  const service = state.selectedPlan.service;
-  const plan = service.plans[index];
+  if (!service || !select) return;
+
+  const plan = service.plans[Number(select.value)];
 
   if (!plan) return;
 
-  state.selectedPlan.plan = plan;
-
-  const volume = getPlanVolume(plan);
-  const duration = plan.duration || plan.period || plan.days || '';
+  state.selectedPlan = plan;
 
   $('#orderSummary').innerHTML = `
     <div class="order-summary-row">
@@ -316,26 +273,24 @@ function updateOrderSummary() {
 
     <div class="order-summary-row">
       <span>بسته</span>
-      <strong>${escapeHTML(getPlanName(plan))}</strong>
+      <strong>${escapeHTML(plan.title || plan.name || 'بسته')}</strong>
     </div>
 
-    ${volume ? `
-      <div class="order-summary-row">
-        <span>حجم</span>
-        <strong>${escapeHTML(volume)}</strong>
-      </div>
-    ` : ''}
+    <div class="order-summary-row">
+      <span>حجم</span>
+      <strong>${escapeHTML(plan.volume || '—')}</strong>
+    </div>
 
-    ${duration ? `
-      <div class="order-summary-row">
-        <span>مدت اعتبار</span>
-        <strong>${escapeHTML(duration)}</strong>
-      </div>
-    ` : ''}
+    <div class="order-summary-row">
+      <span>مدت اعتبار</span>
+      <strong>${escapeHTML(plan.days || 30)} روز</strong>
+    </div>
 
     <div class="order-summary-row">
       <span>مبلغ</span>
-      <strong style="color:var(--primary)">${escapeHTML(formatPrice(getPlanPrice(plan)))}</strong>
+      <strong style="color:var(--primary)">
+        ${escapeHTML(formatPrice(plan.price))}
+      </strong>
     </div>
   `;
 }
@@ -343,69 +298,74 @@ function updateOrderSummary() {
 async function submitOrder(event) {
   event.preventDefault();
 
-  if (state.submitting || !state.selectedPlan) return;
+  if (state.submitting) return;
 
-  const usernameInput = $('#tgUsername');
-  const username = usernameInput.value.trim().replace(/^@/, '');
+  const service = state.selectedService;
+  const plan = state.selectedPlan;
 
-  if (!/^[a-zA-Z0-9_]{5,32}$/.test(username)) {
-    showToast('آیدی تلگرام معتبر وارد کنید؛ حداقل ۵ حرف یا عدد.', 'error');
-    usernameInput.focus();
+  if (!service || !plan) {
+    showToast('ابتدا سرویس و بسته را انتخاب کنید.', 'error');
     return;
   }
 
-  const { service, plan } = state.selectedPlan;
+  const input = $('#tgUsername');
+  const username = input.value.trim().replace(/^@/, '');
+
+  if (!/^[a-zA-Z0-9_]{5,32}$/.test(username)) {
+    showToast('آیدی تلگرام معتبر وارد کنید.', 'error');
+    input.focus();
+    return;
+  }
+
   const button = $('#confirmOrder');
   const result = $('#orderResult');
 
   state.submitting = true;
   button.disabled = true;
-  button.textContent = 'در حال ثبت درخواست...';
+  button.textContent = 'در حال ثبت...';
   result.textContent = '';
 
   try {
-    const response = await fetch(`${API_BASE}/orders`, {
+    const response = await fetch(`${API}/orders`, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
       },
       body: JSON.stringify({
         serviceId: service.id,
-        serviceName: service.name,
-        planId: String(plan.id ?? plan.name ?? plan.title ?? ''),
-        planName: getPlanName(plan),
-        price: Number(getPlanPrice(plan)),
-        volume: getPlanVolume(plan),
-        telegramUsername: username
+        planId: String(plan.id),
+        username
       })
     });
 
     const data = await response.json().catch(() => ({}));
 
-    if (!response.ok) {
-      throw new Error(data.message || data.error || 'ثبت سفارش انجام نشد.');
+    if (!response.ok || !data.ok) {
+      throw new Error(
+        data.error || 'ثبت درخواست سفارش انجام نشد.'
+      );
     }
 
-    const orderId = data.order?.id ?? data.orderId ?? data.id;
+    const orderId = data.order?.id || 'ثبت شد';
 
-    result.textContent = orderId
-      ? `درخواست شما ثبت شد. کد پیگیری: ${orderId} — وضعیت سفارش را از پشتیبانی پیگیری کنید.`
-      : 'درخواست شما ثبت شد. برای پیگیری با پشتیبانی تماس بگیرید.';
-
-    showToast('درخواست سفارش ثبت شد.');
+    result.textContent =
+      `درخواست شما ثبت شد. کد پیگیری: ${orderId}. برای پیگیری و هماهنگی پرداخت با پشتیبانی تماس بگیرید.`;
 
     button.textContent = 'درخواست ثبت شد';
-  } catch (error) {
-    result.textContent = error.message || 'ارتباط با سرور برقرار نشد.';
-    showToast(result.textContent, 'error');
+    showToast('درخواست شما با موفقیت ثبت شد.');
 
+  } catch (error) {
+    result.textContent = error.message || 'خطای ارتباط با سرور.';
     button.disabled = false;
     button.textContent = 'تلاش مجدد';
+    showToast(result.textContent, 'error');
+
   } finally {
     state.submitting = false;
 
-    if (button.textContent !== 'تلاش مجدد' &&
-        button.textContent !== 'درخواست ثبت شد') {
+    if (button.textContent !== 'درخواست ثبت شد' &&
+        button.textContent !== 'تلاش مجدد') {
       button.disabled = false;
       button.textContent = 'ثبت درخواست سفارش';
     }
@@ -420,29 +380,29 @@ async function loadServices() {
   }
 
   try {
-    const response = await fetch(`${API_BASE}/config`, {
+    const response = await fetch(`${API}/config`, {
       headers: { 'Accept': 'application/json' }
     });
 
     if (!response.ok) {
-      throw new Error('دریافت فهرست سرویس‌ها ناموفق بود.');
+      throw new Error('سرور پاسخ مناسبی نداد.');
     }
 
     const data = await response.json();
+
     state.services = normalizeServices(data);
 
     renderServices();
+
   } catch (error) {
-    console.error('Loading services failed:', error);
+    console.error('Failed to load services:', error);
 
     if (grid) {
       grid.innerHTML = `
         <div class="error-state">
-          دریافت اطلاعات سرویس‌ها با مشکل مواجه شد.
+          دریافت سرویس‌ها ناموفق بود.
           <br>
-          لطفاً چند لحظه بعد دوباره صفحه را باز کنید.
-          <br><br>
-          <button type="button" class="btn btn-secondary" id="retryServices">
+          <button type="button" class="btn btn-secondary" id="retryServices" style="margin-top:12px">
             تلاش مجدد
           </button>
         </div>
@@ -458,6 +418,6 @@ document.addEventListener('keydown', event => {
 });
 
 document.addEventListener('DOMContentLoaded', () => {
-  ensureModalElements();
+  ensureModal();
   loadServices();
 });
