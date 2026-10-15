@@ -1,0 +1,17 @@
+{
+  "name": "custom-store-miniapp",
+  "version": "2.0.0",
+  "private": true,
+  "description": "Configurable Telegram Mini App Store",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "check": "node --check server.js && node --check public/app.js && node scripts/check-project.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "express": "^4.21.2"
+  }
+}
