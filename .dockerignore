@@ -1,0 +1,6 @@
+node_modules
+.env
+sami-premium-data.json
+__pycache__
+*.pyc
+.git

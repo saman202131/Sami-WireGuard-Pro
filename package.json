@@ -1,0 +1,18 @@
+{
+  "name": "sami-premium-sticker-studio",
+  "version": "2.0.0",
+  "private": true,
+  "description": "Sami Premium AI Motion Sticker Studio with TGS generation, credits, store and Telegram bot manager",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "check": "node --check server.js && node --check app.js",
+    "test": "PYTHONPATH=stickerbot_worker python3 -m unittest discover -s stickerbot_worker/tests -v"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "express": "^4.21.2"
+  }
+}
